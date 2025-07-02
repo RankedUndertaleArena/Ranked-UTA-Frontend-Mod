@@ -37,15 +37,6 @@ public class RankedUTA implements ModInitializer {
 	public void onInitialize() {
 		File propertyFile = new File(PROPERTY_PATH);
 		Properties properties = new Properties();
-		// Check if the properties file have the 'server-role' property
-		if (!properties.containsKey("server-role")) {
-			properties.setProperty("server-role", "unknown");
-			try (FileOutputStream output = new FileOutputStream(propertyFile)) {
-				properties.store(output, "Ranked UTA Server Properties");
-			} catch (IOException e) {
-				LOGGER.error("Failed to update {}: {}", PROPERTY_PATH, e.getMessage());
-			}
-		}
 		// Load the properties file
 		try (FileInputStream input = new FileInputStream(propertyFile)) {
 			properties.load(input);
@@ -59,6 +50,15 @@ public class RankedUTA implements ModInitializer {
 		} catch (IOException e) {
 			LOGGER.error("Failed to load {}: {}",
 				PROPERTY_PATH, e.getMessage());
+		}
+		// Check if the properties file have the 'server-role' property
+		if (!properties.containsKey("server-role")) {
+			properties.setProperty("server-role", "unknown");
+			try (FileOutputStream output = new FileOutputStream(propertyFile)) {
+				properties.store(output, "Ranked UTA Server Properties");
+			} catch (IOException e) {
+				LOGGER.error("Failed to update {}: {}", PROPERTY_PATH, e.getMessage());
+			}
 		}
 		// Connect to MongoDB
 		mongoClient = MongoClients.create("mongodb+srv://owner:OAit6yunwFuN7b1q@player.ow5nhhq.mongodb.net/?retryWrites=true&w=majority&appName=Player");
@@ -110,7 +110,7 @@ public class RankedUTA implements ModInitializer {
 			long lastLogin = System.currentTimeMillis();
 
 			Document playerData = mongoDatabase.getCollection("Player").find(Filters.eq("uuid", playerUUID)).first();
-			if (playerData != null) {
+			if (playerData == null) {
 				Document newPlayer = new Document("uuid", playerUUID)
 					.append("name", playerName)
 					.append("lastLogin", lastLogin)

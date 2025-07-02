@@ -7,6 +7,8 @@ import net.minecraft.text.Text;
 import org.rankeduta.defines.Party;
 import org.rankeduta.features.services.PartyService;
 
+import java.util.UUID;
+
 public class PartyCommandHandler {
     public static void invite(ServerPlayerEntity sender, ServerPlayerEntity target, PartyService partyService) {
         // 檢查是否為 leader，如果不是則返回錯誤訊息
@@ -15,6 +17,7 @@ public class PartyCommandHandler {
 
         if (sender == target) {
             sender.sendMessage(Text.literal("你不能邀請自己！").withColor(0xFF5555));
+            return;
         }
         if (isTargetHaveParty) {
             sender.sendMessage(Text.literal("該玩家已在其他隊伍中！").withColor(0xFF5555));
@@ -65,7 +68,7 @@ public class PartyCommandHandler {
         partyService.saveParty(party);
         sender.sendMessage(Text.literal("你已加入隊伍！").withColor(0x55FF55));
         for (String memberUUID : party.getMembers()) {
-            ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberUUID);
+            ServerPlayerEntity member = server.getPlayerManager().getPlayer(UUID.fromString(memberUUID));
             if (member != null && !member.equals(sender)) {
                 member.sendMessage(Text.literal(sender.getName().getString() + " 已加入隊伍！").withColor(0x55FF55));
             }
@@ -94,7 +97,7 @@ public class PartyCommandHandler {
         target.sendMessage(Text.literal(sender.getName().getString() + "已把你踢出隊伍！").withColor(0x55FF55));
 
         for (String memberUUID : party.getMembers()) {
-            ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberUUID);
+            ServerPlayerEntity member = server.getPlayerManager().getPlayer(UUID.fromString(memberUUID));
             if (member != null) {
                 if (!member.equals(sender)) {
                     member.sendMessage(Text.literal("已把 " + target.getName().getString() + " 踢出隊伍！").withColor(0x55FF55));
@@ -125,7 +128,7 @@ public class PartyCommandHandler {
         sender.sendMessage(Text.literal("你已把隊長轉交給 " + target.getName().getString() + "！").withColor(0x55FF55));
         target.sendMessage(Text.literal(sender.getName().getString() + " 已把隊長轉交給你！").withColor(0x55FF55));
         for (String memberUUID : party.getMembers()) {
-            ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberUUID);
+            ServerPlayerEntity member = server.getPlayerManager().getPlayer(UUID.fromString(memberUUID));
             if (member != null) {
                 if (!member.equals(sender) || !member.equals(target)) {
                     member.sendMessage(Text.literal(sender.getName().getString() + " 已把隊長轉交給 " + target.getName().getString() + "！").withColor(0x55FF55));
@@ -142,18 +145,18 @@ public class PartyCommandHandler {
             sender.sendMessage(Text.literal("你目前不在隊伍裡！").withColor(0xFF5555));
             return;
         }
-        ServerPlayerEntity leader = server.getPlayerManager().getPlayer(party.getLeader());
+        ServerPlayerEntity leader = server.getPlayerManager().getPlayer(UUID.fromString(party.getLeader()));
         sender.sendMessage(Text.literal("隊伍成員：").withColor(0x55FF55));
         if (sender.equals(leader)) {
-            sender.sendMessage(Text.literal("- " + leader.getName().getString()).withColor(0xFFFF55).setStyle(Style.EMPTY.withBold(true)));
+            sender.sendMessage(Text.literal("- " + leader.getName().getString()).setStyle(Style.EMPTY.withBold(true).withColor(0xFFFF55)));
         } else {
             sender.sendMessage(Text.literal("- " + leader.getName().getString()).withColor(0xFFFF55));
         }
         for (String memberUUID : party.getMembers()) {
-            ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberUUID);
-            if (member != null && !member.equals(leader)) {
-                if (sender.equals(member)) {
-                    sender.sendMessage(Text.literal("- " + member.getName().getString()).withColor(0x55FF55).setStyle(Style.EMPTY.withBold(true)));
+            ServerPlayerEntity member = server.getPlayerManager().getPlayer(UUID.fromString(memberUUID));
+            if (member != null) {
+                if (!member.equals(leader) && sender.equals(member)) {
+                    sender.sendMessage(Text.literal("- " + member.getName().getString()).setStyle(Style.EMPTY.withBold(true).withColor(0x55FF55)));
                 } else {
                     sender.sendMessage(Text.literal("- " + member.getName().getString()).withColor(0x55FF55));
                 }
@@ -180,7 +183,7 @@ public class PartyCommandHandler {
 
         sender.sendMessage(Text.literal("你已退出隊伍！"));
         for (String memberUUID : party.getMembers()) {
-            ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberUUID);
+            ServerPlayerEntity member = server.getPlayerManager().getPlayer(UUID.fromString(memberUUID));
             if (member != null) {
                 if (!member.equals(sender)) {
                     member.sendMessage(Text.literal(sender.getName().getString() + " 已退出隊伍！").withColor(0x55FF55));
@@ -203,7 +206,7 @@ public class PartyCommandHandler {
 
         sender.sendMessage(Text.literal("你已解散隊伍！").withColor(0x55FF55));
         for (String memberUUID : party.getMembers()) {
-            ServerPlayerEntity member = server.getPlayerManager().getPlayer(memberUUID);
+            ServerPlayerEntity member = server.getPlayerManager().getPlayer(UUID.fromString(memberUUID));
             if (member != null) {
                 if (!member.equals(sender)) {
                     member.sendMessage(Text.literal(sender.getName().getString() + " 已解散隊伍！").withColor(0x55FF55));
