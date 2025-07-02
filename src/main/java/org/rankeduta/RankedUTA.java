@@ -12,6 +12,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import org.bson.Document;
 import org.rankeduta.defines.ServerRole;
 import org.rankeduta.defines.ServerStatus;
+import org.rankeduta.features.commands.CommandInit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +64,8 @@ public class RankedUTA implements ModInitializer {
 		mongoClient = MongoClients.create("mongodb+srv://owner:OAit6yunwFuN7b1q@player.ow5nhhq.mongodb.net/?retryWrites=true&w=majority&appName=Player");
 		mongoDatabase = mongoClient.getDatabase("Stats");
 		LOGGER.info("Connected to MongoDB database: {}", mongoDatabase.getName());
+
+		CommandInit.registerCommands(mongoDatabase);
 
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
 			String IP = "localhost";
