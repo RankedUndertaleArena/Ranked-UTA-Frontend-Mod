@@ -23,6 +23,10 @@ public class PartyCommandHandler {
             sender.sendMessage(Text.literal("該玩家已在其他隊伍中！").withColor(0xFF5555));
             return;
         }
+        if (!sender.getServer().getPlayerManager().getPlayerList().contains(target)) {
+            sender.sendMessage(Text.literal("找不到玩家或是玩家不在伺服器中！").withColor(0xFF5555));
+            return;
+        }
         if (party == null) {
             party = new Party(sender.getUuidAsString());
             partyService.saveParty(party);
@@ -30,12 +34,12 @@ public class PartyCommandHandler {
             sender.sendMessage(Text.literal("只有隊長可以邀請成員！").withColor(0xFF5555));
             return;
         }
-        if (!sender.getServer().getPlayerManager().getPlayerList().contains(target)) {
-            sender.sendMessage(Text.literal("找不到玩家或是玩家不在伺服器中！").withColor(0xFF5555));
-            return;
-        }
         if (party.getMembers().contains(target.getUuidAsString())) {
             sender.sendMessage(Text.literal("該玩家已在隊伍中！").withColor(0xFF5555));
+            return;
+        }
+        if (party.getInvites().containsKey(target.getUuidAsString())) {
+            sender.sendMessage(Text.literal("你已經邀請過該玩家了！").withColor(0xFF5555));
             return;
         }
 
@@ -79,16 +83,20 @@ public class PartyCommandHandler {
         MinecraftServer server = sender.getServer();
         Party party = partyService.getPartyByMember(sender.getUuidAsString());
 
+        if (party == null) {
+            sender.sendMessage(Text.literal("你目前不在隊伍裡！").withColor(0xFF5555));
+            return;
+        }
         if (sender == target) {
             sender.sendMessage(Text.literal("你不能踢出自己！").withColor(0xFF5555));
             return;
         }
-
-        if (party == null) {
-            sender.sendMessage(Text.literal("你目前不在隊伍裡！").withColor(0xFF5555));
-            return;
-        } else if (!party.getLeader().equals(sender.getUuidAsString())) {
+        if (!party.getLeader().equals(sender.getUuidAsString())) {
             sender.sendMessage(Text.literal("只有隊長可以踢出成員！").withColor(0xFF5555));
+            return;
+        }
+        if (!party.getMembers().contains(target.getUuidAsString())) {
+            sender.sendMessage(Text.literal("該玩家不在你的隊伍中！").withColor(0xFF5555));
             return;
         }
 
@@ -110,16 +118,20 @@ public class PartyCommandHandler {
         MinecraftServer server = sender.getServer();
         Party party = partyService.getPartyByMember(sender.getUuidAsString());
 
+        if (party == null) {
+            sender.sendMessage(Text.literal("你目前不在隊伍裡！").withColor(0xFF5555));
+            return;
+        }
         if (sender == target) {
             sender.sendMessage(Text.literal("你已經是隊長了！").withColor(0xFF5555));
             return;
         }
-
-        if (party == null) {
-            sender.sendMessage(Text.literal("你目前不在隊伍裡！").withColor(0xFF5555));
-            return;
-        } else if (!party.getLeader().equals(sender.getUuidAsString())) {
+        if (!party.getLeader().equals(sender.getUuidAsString())) {
             sender.sendMessage(Text.literal("你並不是隊長！").withColor(0xFF5555));
+            return;
+        }
+        if (!party.getMembers().contains(target.getUuidAsString())) {
+            sender.sendMessage(Text.literal("該玩家不在你的隊伍中！").withColor(0xFF5555));
             return;
         }
 

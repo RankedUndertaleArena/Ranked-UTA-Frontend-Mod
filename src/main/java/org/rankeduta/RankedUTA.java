@@ -8,11 +8,14 @@ import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.bson.Document;
 import org.rankeduta.defines.ServerRole;
 import org.rankeduta.defines.ServerStatus;
 import org.rankeduta.features.commands.CommandInit;
+import org.rankeduta.features.services.PartyInviteCleaner;
+import org.rankeduta.features.services.PartyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +33,7 @@ public class RankedUTA implements ModInitializer {
 	public static String PROPERTY_PATH = "server.properties";
 	public static ServerRole SERVER_ROLE = ServerRole.UNKNOWN;
 	public static ServerStatus SERVER_STATUS = ServerStatus.UNKNOWN;
+	public MinecraftServer minecraftServer;
 	public MongoClient mongoClient;
 	public MongoDatabase mongoDatabase;
 
@@ -61,13 +65,18 @@ public class RankedUTA implements ModInitializer {
 			}
 		}
 		// Connect to MongoDB
-		mongoClient = MongoClients.create("mongodb+srv://owner:OAit6yunwFuN7b1q@player.ow5nhhq.mongodb.net/?retryWrites=true&w=majority&appName=Player");
-		mongoDatabase = mongoClient.getDatabase("Stats");
+		String mongoURI = "mongodb+srv://owner:130m8oVi160mRtx2@database.6m2vwnx.mongodb.net/?retryWrites=true&w=majority&appName=DataBase";
+		mongoClient = MongoClients.create(mongoURI);
+		mongoDatabase = mongoClient.getDatabase("data");
 		LOGGER.info("Connected to MongoDB database: {}", mongoDatabase.getName());
 
 		CommandInit.registerCommands(mongoDatabase);
 
+		PartyService partyService = new PartyService(mongoDatabase);
+		PartyInviteCleaner partyInviteCleaner = new PartyInviteCleaner(partyService, minecraftServer);
+
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+			minecraftServer = server;
 			String IP = "localhost";
 			if (!server.getServerIp().isEmpty()) IP = server.getServerIp();
 			String port = String.valueOf(server.getServerPort());
@@ -82,10 +91,12 @@ public class RankedUTA implements ModInitializer {
 				Document newServer = new Document("ip", IP_PORT)
 					.append("role", SERVER_ROLE.getServerRole())
 					.append("status", SERVER_STATUS.getStatus());
-				mongoDatabase.getCollection("Server").insertOne(newServer);
+				mongoDatabase.getCollection("servers").insertOne(newServer);
 				LOGGER.info("Added new {} server data ({})",
 					SERVER_ROLE.getServerRole(), IP_PORT);
 			}
+
+			partyInviteCleaner.scheduleCleanup();
 		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
 			String IP = "localhost";
@@ -93,7 +104,9 @@ public class RankedUTA implements ModInitializer {
 			String port = String.valueOf(server.getServerPort());
 			String IP_PORT = IP + ":" + port;
 
-			mongoDatabase.getCollection("Server").deleteOne(Filters.eq("ip", IP_PORT));
+			partyInviteCleaner.stopCleanup();
+
+			mongoDatabase.getCollection("servers").deleteOne(Filters.eq("ip", IP_PORT));
 			LOGGER.info("Removed {} server data ({})",
 				SERVER_ROLE.getServerRole(), IP_PORT);
 
@@ -109,7 +122,7 @@ public class RankedUTA implements ModInitializer {
 			String playerUUID = player.getUuidAsString();
 			long lastLogin = System.currentTimeMillis();
 
-			Document playerData = mongoDatabase.getCollection("Player").find(Filters.eq("uuid", playerUUID)).first();
+			Document playerData = mongoDatabase.getCollection("players").find(Filters.eq("uuid", playerUUID)).first();
 			if (playerData == null) {
 				Document newPlayer = new Document("uuid", playerUUID)
 					.append("name", playerName)
@@ -118,17 +131,17 @@ public class RankedUTA implements ModInitializer {
 					.append("rankDuo", 1000)
 					.append("rankSquad", 1000)
 					.append("rankSiege", 1000);
-				mongoDatabase.getCollection("Player").insertOne(newPlayer);
+				mongoDatabase.getCollection("players").insertOne(newPlayer);
 				LOGGER.info("Added new player data for {} ({})", playerName, playerUUID);
 			} else {
-				mongoDatabase.getCollection("Player").updateOne(Filters.eq("uuid", playerUUID),
+				mongoDatabase.getCollection("players").updateOne(Filters.eq("uuid", playerUUID),
 					new Document("$set", new Document("lastLogin", lastLogin)));
 
 				boolean isUpdated = false;
 				if (!playerData.getString("name").equals(playerName)) {
 					isUpdated = true;
 					String oldName = playerData.getString("name");
-					mongoDatabase.getCollection("Player").updateOne(Filters.eq("uuid", playerUUID),
+					mongoDatabase.getCollection("players").updateOne(Filters.eq("uuid", playerUUID),
 						new Document("$set", new Document("name", playerName)));
 					LOGGER.info("Updated player name from {} to {} ({})", oldName, playerName, playerUUID);
 				}
@@ -140,7 +153,9 @@ public class RankedUTA implements ModInitializer {
 			String playerUUID = player.getUuidAsString();
 			long lastLogin = System.currentTimeMillis();
 
-			mongoDatabase.getCollection("Player").updateOne(Filters.eq("uuid", playerUUID),
+			partyService.handleLeaderOffline(player, partyService);
+
+			mongoDatabase.getCollection("players").updateOne(Filters.eq("uuid", playerUUID),
 				new Document("$set", new Document("lastLogin", lastLogin)));
 			LOGGER.info("Updated last login for player {} ({})", player.getName().getString(), playerUUID);
 		});
