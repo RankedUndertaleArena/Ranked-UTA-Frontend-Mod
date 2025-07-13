@@ -1,21 +1,15 @@
 package org.rankeduta;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.Filters;
+import org.json.JSONObject;
 import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
-import org.bson.Document;
 import org.rankeduta.defines.ServerRole;
-import org.rankeduta.defines.ServerStatus;
-import org.rankeduta.features.commands.CommandInit;
-import org.rankeduta.features.services.PartyInviteCleaner;
-import org.rankeduta.features.services.PartyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,38 +17,38 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.http.HttpResponse;
 import java.util.Properties;
+import org.rankeduta.services.commands.Command;
 
 public class RankedUTA implements ModInitializer {
 	// Define the logger for this mod
-	public static final String MOD_ID = "rankeduta";
+	public static final String MOD_ID = "Ranked UTA";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-
 	public static String PROPERTY_PATH = "server.properties";
-	public static ServerRole SERVER_ROLE = ServerRole.UNKNOWN;
-	public static ServerStatus SERVER_STATUS = ServerStatus.UNKNOWN;
-	public MinecraftServer minecraftServer;
-	public MongoClient mongoClient;
-	public MongoDatabase mongoDatabase;
+
+	public static ServerRole serverRole = ServerRole.unknown;
 
 	@Override
 	public void onInitialize() {
+		// Register the command
+		Command.register();
+
+        // Properties Read
 		File propertyFile = new File(PROPERTY_PATH);
 		Properties properties = new Properties();
 		// Load the properties file
 		try (FileInputStream input = new FileInputStream(propertyFile)) {
 			properties.load(input);
-			SERVER_ROLE = ServerRole.fromString(properties.getProperty("server-role", "unknown").toLowerCase());
-			if (!SERVER_ROLE.equals(ServerRole.LOBBY)
-				&& !SERVER_ROLE.equals(ServerRole.MATCH)) {
-				LOGGER.warn("Server role is {}. Please set 'server-role' in {} to 'lobby' or 'match'.",
-					SERVER_ROLE.getServerRole(), PROPERTY_PATH);
-				SERVER_ROLE = ServerRole.UNKNOWN;
-			}
+			LOGGER.info("Loaded properties from {}", PROPERTY_PATH);
+			serverRole = ServerRole.fromString(properties.getProperty("server-role", "unknown").toLowerCase());
+			if (!serverRole.equals(ServerRole.lobby) && !serverRole.equals(ServerRole.match))
+				serverRole = ServerRole.unknown;
 		} catch (IOException e) {
 			LOGGER.error("Failed to load {}: {}",
 				PROPERTY_PATH, e.getMessage());
 		}
+
 		// Check if the properties file have the 'server-role' property
 		if (!properties.containsKey("server-role")) {
 			properties.setProperty("server-role", "unknown");
@@ -64,103 +58,64 @@ public class RankedUTA implements ModInitializer {
 				LOGGER.error("Failed to update {}: {}", PROPERTY_PATH, e.getMessage());
 			}
 		}
-		// Connect to MongoDB
-		String mongoURI = "mongodb+srv://owner:130m8oVi160mRtx2@database.6m2vwnx.mongodb.net/?retryWrites=true&w=majority&appName=DataBase";
-		mongoClient = MongoClients.create(mongoURI);
-		mongoDatabase = mongoClient.getDatabase("data");
-		LOGGER.info("Connected to MongoDB database: {}", mongoDatabase.getName());
 
-		CommandInit.registerCommands(mongoDatabase);
+		ServerLifecycleEvents.SERVER_STARTED.register(this::OnServerStarted);
+		ServerLifecycleEvents.SERVER_STOPPING.register(this::OnServerStopping);
 
-		PartyService partyService = new PartyService(mongoDatabase);
-		PartyInviteCleaner partyInviteCleaner = new PartyInviteCleaner(partyService, minecraftServer);
+		ServerPlayConnectionEvents.JOIN.register(this::OnPlayerJoin);
+		ServerPlayConnectionEvents.DISCONNECT.register(this::OnPlayerLeave);
 
-		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-			minecraftServer = server;
-			String IP = "localhost";
-			if (!server.getServerIp().isEmpty()) IP = server.getServerIp();
-			String port = String.valueOf(server.getServerPort());
-			SERVER_STATUS = switch (SERVER_ROLE) {
-				case LOBBY -> ServerStatus.LOBBY;
-				case MATCH -> ServerStatus.IDLE;
-				default -> ServerStatus.UNKNOWN;
-			};
+		LOGGER.info("Mod {} initialized!", MOD_ID);
+	}
 
-			if (!SERVER_ROLE.equals(ServerRole.UNKNOWN)) {
-				String IP_PORT = IP + ":" + port;
-				Document newServer = new Document("ip", IP_PORT)
-					.append("role", SERVER_ROLE.getServerRole())
-					.append("status", SERVER_STATUS.getStatus());
-				mongoDatabase.getCollection("servers").insertOne(newServer);
-				LOGGER.info("Added new {} server data ({})",
-					SERVER_ROLE.getServerRole(), IP_PORT);
-			}
+	private void OnServerStarted(MinecraftServer server) {
+		if (!serverRole.equals(ServerRole.unknown))
+			LOGGER.info("{} server is starting...", serverRole.name());
+		else
+			LOGGER.warn("Server role is {}. Please set 'server-role' in {} to 'lobby' or 'match'.",
+				serverRole.name(), PROPERTY_PATH);
+    }
 
-			partyInviteCleaner.scheduleCleanup();
-		});
-		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
-			String IP = "localhost";
-			if (!server.getServerIp().isEmpty()) IP = server.getServerIp();
-			String port = String.valueOf(server.getServerPort());
-			String IP_PORT = IP + ":" + port;
+    private void OnServerStopping(MinecraftServer server) {
+		if (!serverRole.equals(ServerRole.unknown))
+			LOGGER.info("{} server is stopping...", serverRole.name());
+    }
 
-			partyInviteCleaner.stopCleanup();
+    private void OnPlayerJoin(ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
+		ServerPlayerEntity player = handler.getPlayer();
+		long lastJoin = System.currentTimeMillis();
+		String playerData = new JSONObject()
+			.put("name", player.getName().getString())
+			.put("uuid", player.getUuid().toString())
+			.put("timestamp", lastJoin).toString();
+		// Here you can handle the player joining the server
+		HttpResponse<String> response = HTTPClient.post("/player/connect", playerData);
+		if (response != null && response.statusCode() == 200) {
+		   	JSONObject jsonResponse = new JSONObject(response.body());
+			String receivedMessage = jsonResponse.get("message").toString();
+			LOGGER.info("Successfully received from Backend Server: {}", receivedMessage);
+		} else {
+			LOGGER.warn("Failed to send {} to connect server: {}",
+				player.getName().getString(), response != null ? response.body() : "No response");
+		}
+    }
 
-			mongoDatabase.getCollection("servers").deleteOne(Filters.eq("ip", IP_PORT));
-			LOGGER.info("Removed {} server data ({})",
-				SERVER_ROLE.getServerRole(), IP_PORT);
-
-			if (mongoClient != null) {
-				mongoClient.close();
-				LOGGER.info("Closed MongoDB connection.");
-			}
-		});
-
-		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-			ServerPlayerEntity player = handler.getPlayer();
-			String playerName = player.getName().getString();
-			String playerUUID = player.getUuidAsString();
-			long lastLogin = System.currentTimeMillis();
-
-			Document playerData = mongoDatabase.getCollection("players").find(Filters.eq("uuid", playerUUID)).first();
-			if (playerData == null) {
-				Document newPlayer = new Document("uuid", playerUUID)
-					.append("name", playerName)
-					.append("lastLogin", lastLogin)
-					.append("rankSolo", 1000)
-					.append("rankDuo", 1000)
-					.append("rankSquad", 1000)
-					.append("rankSiege", 1000);
-				mongoDatabase.getCollection("players").insertOne(newPlayer);
-				LOGGER.info("Added new player data for {} ({})", playerName, playerUUID);
-			} else {
-				mongoDatabase.getCollection("players").updateOne(Filters.eq("uuid", playerUUID),
-					new Document("$set", new Document("lastLogin", lastLogin)));
-
-				boolean isUpdated = false;
-				if (!playerData.getString("name").equals(playerName)) {
-					isUpdated = true;
-					String oldName = playerData.getString("name");
-					mongoDatabase.getCollection("players").updateOne(Filters.eq("uuid", playerUUID),
-						new Document("$set", new Document("name", playerName)));
-					LOGGER.info("Updated player name from {} to {} ({})", oldName, playerName, playerUUID);
-				}
-				if (!isUpdated) LOGGER.info("Loaded player data for {} ({})", playerName, playerUUID);
-			}
-		});
-		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-			ServerPlayerEntity player = handler.getPlayer();
-			String playerUUID = player.getUuidAsString();
-			long lastLogin = System.currentTimeMillis();
-
-			partyService.handleLeaderOffline(player, partyService);
-
-			mongoDatabase.getCollection("players").updateOne(Filters.eq("uuid", playerUUID),
-				new Document("$set", new Document("lastLogin", lastLogin)));
-			LOGGER.info("Updated last login for player {} ({})", player.getName().getString(), playerUUID);
-		});
-
-		LOGGER.info("Mod {} initialized!",
-			MOD_ID);
+    private void OnPlayerLeave(ServerPlayNetworkHandler handler, MinecraftServer server) {
+		ServerPlayerEntity player = handler.getPlayer();
+		long lastJoin = System.currentTimeMillis();
+		String playerData = new JSONObject()
+			.put("name", player.getName().getString())
+			.put("uuid", player.getUuid().toString())
+			.put("timestamp", lastJoin).toString();
+		// Here you can handle the player leaving the server
+		HttpResponse<String> response = HTTPClient.post("/player/disconnect", playerData);
+		if (response != null && response.statusCode() == 200) {
+			JSONObject jsonResponse = new JSONObject(response.body());
+			String receivedMessage = jsonResponse.get("message").toString();
+			LOGGER.info("Successfully received from Backend Server: {}", receivedMessage);
+		} else {
+			LOGGER.warn("Failed to send {} to disconnect server: {}",
+				player.getName().getString(), response != null ? response.body() : "No response");
+		}
 	}
 }

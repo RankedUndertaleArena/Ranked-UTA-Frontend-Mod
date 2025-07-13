@@ -38,12 +38,9 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-	modImplementation "org.mongodb:mongodb-driver-sync:4.10.2"
-	include "org.mongodb:mongodb-driver-sync:4.10.2"
-	modImplementation "org.mongodb:bson:4.10.2"
-	include "org.mongodb:bson:4.10.2"
-	modImplementation "org.mongodb:mongodb-driver-core:4.10.2"
-	include "org.mongodb:mongodb-driver-core:4.10.2"
+	modImplementation 'org.json:json:20231013'
+	include "org.json:json:20231013"
+
 }
 
 processResources {
