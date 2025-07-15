@@ -34,17 +34,17 @@ public class QueueCommand implements ICommand {
         public int run(CommandContext<ServerCommandSource> context) {
             ServerPlayerEntity sender = context.getSource().getPlayer();
             String queueData = new JSONObject()
-                .put("player", sender.getUuid().toString())
+                .put("player", sender.getUuidAsString())
                 .put("mode", "solo").toString();
             HttpResponse<String> response = HTTPClient.post("/queue", queueData);
             if (response != null && response.statusCode() == 200) {
                 JSONObject jsonResponse = new JSONObject(response.body());
-                String receivedMessage = jsonResponse.get("message").toString();
+                String receivedMessage = jsonResponse.getString("message");
                 RankedUTA.LOGGER.info("Successfully received from Backend Server: {}", receivedMessage);
-                return 1; // Return success code
+                return 1;
             } else {
-                RankedUTA.LOGGER.error("Failed to send {} to join solo queue: {}", sender.getName().getString(), response != null ? response.body() : "No response");
-                return 0; // Return failure code
+                RankedUTA.LOGGER.error("Failed to connect the backend server: {}", response != null ? response.body() : "No response");
+                return 0;
             }
         }
     }
@@ -54,17 +54,18 @@ public class QueueCommand implements ICommand {
         public int run(CommandContext<ServerCommandSource> context) {
             ServerPlayerEntity sender = context.getSource().getPlayer();
             String queueData = new JSONObject()
-                .put("player", sender.getUuid().toString())
-                .put("mode", "duo").toString();
+                .put("player", sender.getUuidAsString())
+                .put("mode", "duo")
+                .toString();
             HttpResponse<String> response = HTTPClient.post("/queue", queueData);
             if (response != null && response.statusCode() == 200) {
                 JSONObject jsonResponse = new JSONObject(response.body());
-                String receivedMessage = jsonResponse.get("message").toString();
+                String receivedMessage = jsonResponse.getString("message");
                 RankedUTA.LOGGER.info("Successfully received from Backend Server: {}", receivedMessage);
-                return 1; // Return success code
+                return 1;
             } else {
-                RankedUTA.LOGGER.error("Failed to send {} to join duo queue: {}", sender.getName().getString(), response != null ? response.body() : "No response");
-                return 0; // Return failure code
+                RankedUTA.LOGGER.error("Failed to connect the backend server: {}", response != null ? response.body() : "No response");
+                return 0;
             }
         }
     }
@@ -74,17 +75,18 @@ public class QueueCommand implements ICommand {
         public int run(CommandContext<ServerCommandSource> context) {
             ServerPlayerEntity sender = context.getSource().getPlayer();
             String queueData = new JSONObject()
-                .put("player", sender.getUuid().toString())
-                .put("mode", "squad").toString();
+                .put("player", sender.getUuidAsString())
+                .put("mode", "squad")
+                .toString();
             HttpResponse<String> response = HTTPClient.post("/queue", queueData);
             if (response != null && response.statusCode() == 200) {
                 JSONObject jsonResponse = new JSONObject(response.body());
-                String receivedMessage = jsonResponse.get("message").toString();
+                String receivedMessage = jsonResponse.getString("message");
                 RankedUTA.LOGGER.info("Successfully received from Backend Server: {}", receivedMessage);
-                return 1; // Return success code
+                return 1;
             } else {
-                RankedUTA.LOGGER.error("Failed to send {} to join squad queue: {}", sender.getName().getString(), response != null ? response.body() : "No response");
-                return 0; // Return failure code
+                RankedUTA.LOGGER.error("Failed to connect the backend server: {}", response != null ? response.body() : "No response");
+                return 0;
             }
         }
     }
@@ -94,17 +96,18 @@ public class QueueCommand implements ICommand {
         public int run(CommandContext<ServerCommandSource> context) {
             ServerPlayerEntity sender = context.getSource().getPlayer();
             String queueData = new JSONObject()
-                .put("player", sender.getUuid().toString())
-                .put("mode", "siege").toString();
+                .put("player", sender.getUuidAsString())
+                .put("mode", "siege")
+                .toString();
             HttpResponse<String> response = HTTPClient.post("/queue", queueData);
             if (response != null && response.statusCode() == 200) {
                 JSONObject jsonResponse = new JSONObject(response.body());
-                String receivedMessage = jsonResponse.get("message").toString();
+                String receivedMessage = jsonResponse.getString("message");
                 RankedUTA.LOGGER.info("Successfully received from Backend Server: {}", receivedMessage);
-                return 1; // Return success code
+                return 1;
             } else {
-                RankedUTA.LOGGER.error("Failed to send {} to join siege queue: {}", sender.getName().getString(), response != null ? response.body() : "No response");
-                return 0; // Return failure code
+                RankedUTA.LOGGER.error("Failed to connect the backend server: {}", response != null ? response.body() : "No response");
+                return 0;
             }
         }
     }

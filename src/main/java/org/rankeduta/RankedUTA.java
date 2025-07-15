@@ -1,5 +1,7 @@
 package org.rankeduta;
 
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
 import org.json.JSONObject;
 import net.fabricmc.api.ModInitializer;
 
@@ -28,28 +30,23 @@ public class RankedUTA implements ModInitializer {
 	public static String PROPERTY_PATH = "server.properties";
 
 	public static ServerRole serverRole = ServerRole.unknown;
+	public static Properties properties = new Properties();
+
 
 	@Override
 	public void onInitialize() {
 		// Register the command
 		Command.register();
 
-        // Properties Read
+        // Load the server properties
 		File propertyFile = new File(PROPERTY_PATH);
-		Properties properties = new Properties();
-		// Load the properties file
 		try (FileInputStream input = new FileInputStream(propertyFile)) {
 			properties.load(input);
-			LOGGER.info("Loaded properties from {}", PROPERTY_PATH);
 			serverRole = ServerRole.fromString(properties.getProperty("server-role", "unknown").toLowerCase());
-			if (!serverRole.equals(ServerRole.lobby) && !serverRole.equals(ServerRole.match))
-				serverRole = ServerRole.unknown;
+			if (!serverRole.equals(ServerRole.lobby) && !serverRole.equals(ServerRole.match)) serverRole = ServerRole.unknown;
 		} catch (IOException e) {
-			LOGGER.error("Failed to load {}: {}",
-				PROPERTY_PATH, e.getMessage());
+			LOGGER.error("Failed to load {}: {}", PROPERTY_PATH, e.getMessage());
 		}
-
-		// Check if the properties file have the 'server-role' property
 		if (!properties.containsKey("server-role")) {
 			properties.setProperty("server-role", "unknown");
 			try (FileOutputStream output = new FileOutputStream(propertyFile)) {
@@ -69,53 +66,68 @@ public class RankedUTA implements ModInitializer {
 	}
 
 	private void OnServerStarted(MinecraftServer server) {
-		if (!serverRole.equals(ServerRole.unknown))
-			LOGGER.info("{} server is starting...", serverRole.name());
-		else
-			LOGGER.warn("Server role is {}. Please set 'server-role' in {} to 'lobby' or 'match'.",
-				serverRole.name(), PROPERTY_PATH);
+		switch (serverRole) {
+			case lobby:
+				break;
+			case match:
+				LOGGER.info("Server role is set to 'match'.");
+				break;
+			default:
+				LOGGER.warn("Server role is {}. Please set 'server-role' in {} to 'lobby' or 'match'.", serverRole.name(), PROPERTY_PATH);
+		}
     }
 
     private void OnServerStopping(MinecraftServer server) {
-		if (!serverRole.equals(ServerRole.unknown))
-			LOGGER.info("{} server is stopping...", serverRole.name());
+		switch (serverRole) {
+			case lobby:
+				break;
+			case match:
+				LOGGER.info("Server role is set to 'match'.");
+				break;
+		}
     }
 
     private void OnPlayerJoin(ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
-		ServerPlayerEntity player = handler.getPlayer();
-		long lastJoin = System.currentTimeMillis();
-		String playerData = new JSONObject()
-			.put("name", player.getName().getString())
-			.put("uuid", player.getUuid().toString())
-			.put("timestamp", lastJoin).toString();
-		// Here you can handle the player joining the server
-		HttpResponse<String> response = HTTPClient.post("/player/connect", playerData);
-		if (response != null && response.statusCode() == 200) {
-		   	JSONObject jsonResponse = new JSONObject(response.body());
-			String receivedMessage = jsonResponse.get("message").toString();
-			LOGGER.info("Successfully received from Backend Server: {}", receivedMessage);
-		} else {
-			LOGGER.warn("Failed to send {} to connect server: {}",
-				player.getName().getString(), response != null ? response.body() : "No response");
+		switch (serverRole) {
+			case lobby -> {
+				ServerPlayerEntity player = handler.getPlayer();
+				long lastJoin = System.currentTimeMillis();
+
+				String bodyData = new JSONObject()
+					.put("name", player.getName().getString())
+					.put("uuid", player.getUuidAsString())
+					.put("timestamp", lastJoin)
+					.toString();
+
+				HttpResponse<String> response = HTTPClient.post("/player/connect", bodyData);
+
+				if (response != null && response.statusCode() >= 500)
+					LOGGER.error("Failed to connect the backend server: {}", response.body());
+				else LOGGER.error("No response from the backend server.");
+			}
+			case match -> {}
 		}
     }
 
     private void OnPlayerLeave(ServerPlayNetworkHandler handler, MinecraftServer server) {
-		ServerPlayerEntity player = handler.getPlayer();
-		long lastJoin = System.currentTimeMillis();
-		String playerData = new JSONObject()
-			.put("name", player.getName().getString())
-			.put("uuid", player.getUuid().toString())
-			.put("timestamp", lastJoin).toString();
-		// Here you can handle the player leaving the server
-		HttpResponse<String> response = HTTPClient.post("/player/disconnect", playerData);
-		if (response != null && response.statusCode() == 200) {
-			JSONObject jsonResponse = new JSONObject(response.body());
-			String receivedMessage = jsonResponse.get("message").toString();
-			LOGGER.info("Successfully received from Backend Server: {}", receivedMessage);
-		} else {
-			LOGGER.warn("Failed to send {} to disconnect server: {}",
-				player.getName().getString(), response != null ? response.body() : "No response");
+		switch (serverRole) {
+			case lobby -> {
+				ServerPlayerEntity player = handler.getPlayer();
+				long lastJoin = System.currentTimeMillis();
+
+				String bodyData = new JSONObject()
+					.put("name", player.getName().getString())
+					.put("uuid", player.getUuidAsString())
+					.put("timestamp", lastJoin)
+					.toString();
+
+				HttpResponse<String> response = HTTPClient.post("/player/disconnect", bodyData);
+
+				if (response != null && response.statusCode() >= 500)
+					LOGGER.error("Failed to connect the backend server: {}", response.body());
+				else LOGGER.error("No response from the backend server.");
+			}
+			case match -> {}
 		}
 	}
 }
