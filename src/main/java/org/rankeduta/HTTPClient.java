@@ -1,5 +1,7 @@
 package org.rankeduta;
 
+import org.json.JSONObject;
+
 import java.net.URI;
 
 import java.net.http.HttpClient;
@@ -33,61 +35,45 @@ public class HTTPClient {
         }
     }
 
-    public static HttpResponse<String> get(String url, String uri) {
+    public static HttpResponse<String> sendRequest(String method, String url, String body) {
         try {
-            var request = HttpRequest.newBuilder()
-                .uri(java.net.URI.create(apiUrl+url+uri))
-                .header("User-Agent", userAgent)
-                .GET()
-                .build();
-            return client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
-            RankedUTA.LOGGER.error("HTTP GET request failed: {}", e.getMessage());
-            return null;
-        }
-    }
+            HttpRequest.Builder builder = HttpRequest.newBuilder();
+            switch (method) {
+                case "POST" ->
+                    builder.uri(URI.create(apiUrl + url))
+                        .header("User-Agent", userAgent)
+                        .header("Content-Type", "application/json")
+                        .POST(BodyPublishers.ofString(body));
+                case "GET" -> {
+                    if (body == null) builder.uri(java.net.URI.create(apiUrl+url));
+                    else builder.uri(java.net.URI.create(apiUrl+url+body));
 
-    public static HttpResponse<String> get(String url, URI uri) {
-        try {
-            var request = HttpRequest.newBuilder()
-                .uri(URI.create(apiUrl+url).resolve(uri))
-                .header("User-Agent", userAgent)
-                .GET()
-                .build();
-            return client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
-            RankedUTA.LOGGER.error("HTTP GET request failed: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    public static HttpResponse<String> get(String url, URIBuilder uriBuilder) {
-            try {
-                var request = HttpRequest.newBuilder()
-                    .uri(URI.create(apiUrl+url).resolve(uriBuilder.build()))
-                    .header("User-Agent", userAgent)
-                    .GET()
-                    .build();
-                return client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
-            } catch (Exception e) {
-                RankedUTA.LOGGER.error("HTTP GET request failed: {}", e.getMessage());
-                return null;
+                    builder.header("User-Agent", userAgent)
+                        .GET();
+                }
             }
-        }
 
+            return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            RankedUTA.LOGGER.error("HTTP {} request to {} failed: {}", method, url, e.getMessage());
+            return null;
+        }
+    }
+
+    public static HttpResponse<String> get(String url, String body) {
+        return sendRequest("GET", url, body);
+    }
 
     public static HttpResponse<String> post(String url, String body) {
-        try {
-            var request = HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(apiUrl+url))
-                    .header("User-Agent", userAgent)
-                    .header("Content-Type", "application/json")
-                    .POST(BodyPublishers.ofString(body))
-                    .build();
-            return client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
-            RankedUTA.LOGGER.error("HTTP POST request failed: {}", e.getMessage());
+        return sendRequest("POST", url, body);
+    }
+
+    public static JSONObject receivedResponse(HttpResponse<String> response) {
+        if (response == null) return null;
+        if (response.statusCode() >= 500) {
+            RankedUTA.LOGGER.error("Backend Server Error: {} - {}", response.statusCode(), response.body());
             return null;
         }
+        return new JSONObject(response.body());
     }
 }

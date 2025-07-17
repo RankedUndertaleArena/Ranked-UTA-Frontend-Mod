@@ -1,4 +1,4 @@
-package org.rankeduta.services.commands;
+package org.rankeduta.commands;
 
 import java.util.ArrayList;
 import java.util.List;

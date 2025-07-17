@@ -1,7 +1,8 @@
 package org.rankeduta;
 
-import net.minecraft.text.Style;
+import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
 import net.minecraft.text.Text;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import net.fabricmc.api.ModInitializer;
 
@@ -12,6 +13,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.rankeduta.defines.ServerRole;
+import org.rankeduta.services.ThreadService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +23,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.util.Properties;
-import org.rankeduta.services.commands.Command;
+import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import org.rankeduta.commands.Command;
 
 public class RankedUTA implements ModInitializer {
 	// Define the logger for this mod
@@ -32,6 +39,7 @@ public class RankedUTA implements ModInitializer {
 	public static ServerRole serverRole = ServerRole.unknown;
 	public static Properties properties = new Properties();
 
+	public static final ThreadService threadService = new ThreadService();
 
 	@Override
 	public void onInitialize() {
@@ -67,22 +75,20 @@ public class RankedUTA implements ModInitializer {
 
 	private void OnServerStarted(MinecraftServer server) {
 		switch (serverRole) {
-			case lobby:
-				break;
-			case match:
-				LOGGER.info("Server role is set to 'match'.");
-				break;
-			default:
-				LOGGER.warn("Server role is {}. Please set 'server-role' in {} to 'lobby' or 'match'.", serverRole.name(), PROPERTY_PATH);
+            case lobby -> {
+				threadService.start(server);
+            }
+            case match -> LOGGER.info("Server role is set to 'match'.");
+			default -> LOGGER.warn("Server role is {}. Please set 'server-role' in {} to 'lobby' or 'match'.", serverRole.name(), PROPERTY_PATH);
 		}
     }
 
     private void OnServerStopping(MinecraftServer server) {
 		switch (serverRole) {
 			case lobby:
+				threadService.stop();
 				break;
 			case match:
-				LOGGER.info("Server role is set to 'match'.");
 				break;
 		}
     }
@@ -93,17 +99,14 @@ public class RankedUTA implements ModInitializer {
 				ServerPlayerEntity player = handler.getPlayer();
 				long lastJoin = System.currentTimeMillis();
 
-				String bodyData = new JSONObject()
+				String body = new JSONObject()
 					.put("name", player.getName().getString())
 					.put("uuid", player.getUuidAsString())
 					.put("timestamp", lastJoin)
 					.toString();
 
-				HttpResponse<String> response = HTTPClient.post("/player/connect", bodyData);
-
-				if (response != null && response.statusCode() >= 500)
-					LOGGER.error("Failed to connect the backend server: {}", response.body());
-				else LOGGER.error("No response from the backend server.");
+				HttpResponse<String> response = HTTPClient.post("/player/connect", body);
+				JSONObject jsonResponse = HTTPClient.receivedResponse(response);
 			}
 			case match -> {}
 		}
@@ -115,17 +118,14 @@ public class RankedUTA implements ModInitializer {
 				ServerPlayerEntity player = handler.getPlayer();
 				long lastJoin = System.currentTimeMillis();
 
-				String bodyData = new JSONObject()
+				String body = new JSONObject()
 					.put("name", player.getName().getString())
 					.put("uuid", player.getUuidAsString())
 					.put("timestamp", lastJoin)
 					.toString();
 
-				HttpResponse<String> response = HTTPClient.post("/player/disconnect", bodyData);
-
-				if (response != null && response.statusCode() >= 500)
-					LOGGER.error("Failed to connect the backend server: {}", response.body());
-				else LOGGER.error("No response from the backend server.");
+				HttpResponse<String> response = HTTPClient.post("/player/disconnect", body);
+				JSONObject jsonResponse = HTTPClient.receivedResponse(response);
 			}
 			case match -> {}
 		}
