@@ -14,7 +14,7 @@ import java.util.Map;
 public class HTTPClient {
     private static final HttpClient client = HttpClient.newHttpClient();
     private static final String userAgent = "application/rankeduta";
-    private static final String apiUrl = "https://test-api.nebcraft.vip";
+    private static final String apiUrl = "http://192.168.195.209:8000";
 
     public static class URIBuilder {
         private final Map<String,String> queryParams = new HashMap<>();
@@ -37,7 +37,7 @@ public class HTTPClient {
 
     public static HttpResponse<String> sendRequest(String method, String url, String body) {
         try {
-            HttpRequest.Builder builder = HttpRequest.newBuilder();
+            HttpRequest.Builder builder = HttpRequest.newBuilder().version(HttpClient.Version.HTTP_1_1);
             switch (method) {
                 case "POST" ->
                     builder.uri(URI.create(apiUrl + url))

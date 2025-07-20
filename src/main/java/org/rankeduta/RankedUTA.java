@@ -1,9 +1,6 @@
 package org.rankeduta;
 
-import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
-import net.minecraft.text.Text;
-import org.json.JSONArray;
-import org.json.JSONObject;
+import org.json.*;
 import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -24,9 +21,6 @@ import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.util.Properties;
 import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import org.rankeduta.commands.Command;
 
@@ -34,18 +28,15 @@ public class RankedUTA implements ModInitializer {
 	// Define the logger for this mod
 	public static final String MOD_ID = "Ranked UTA";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-	public static String PROPERTY_PATH = "server.properties";
+	public static final ThreadService threadService = new ThreadService();
+	public static final UUID SERVER_UUID = UUID.randomUUID();
 
+	public static String PROPERTY_PATH = "server.properties";
 	public static ServerRole serverRole = ServerRole.unknown;
 	public static Properties properties = new Properties();
 
-	public static final ThreadService threadService = new ThreadService();
-
 	@Override
 	public void onInitialize() {
-		// Register the command
-		Command.register();
-
         // Load the server properties
 		File propertyFile = new File(PROPERTY_PATH);
 		try (FileInputStream input = new FileInputStream(propertyFile)) {
@@ -64,6 +55,9 @@ public class RankedUTA implements ModInitializer {
 			}
 		}
 
+		// Register the command
+		Command.register();
+
 		ServerLifecycleEvents.SERVER_STARTED.register(this::OnServerStarted);
 		ServerLifecycleEvents.SERVER_STOPPING.register(this::OnServerStopping);
 
@@ -75,22 +69,23 @@ public class RankedUTA implements ModInitializer {
 
 	private void OnServerStarted(MinecraftServer server) {
 		switch (serverRole) {
-            case lobby -> {
-				threadService.start(server);
-            }
-            case match -> LOGGER.info("Server role is set to 'match'.");
+            case lobby -> threadService.startAtLobby(server);
+            case match -> {
+				int port = server.getServerPort();
+				String body = new JSONObject()
+					.put("uuid", SERVER_UUID.toString())
+					.put("port", port)
+					.toString();
+				HttpResponse<String> response = HTTPClient.post("/server/game/register", body);
+				JSONObject jsonResponse = HTTPClient.receivedResponse(response);
+				if (jsonResponse != null && jsonResponse.getInt("status") == 200) threadService.startAtMatch(server, SERVER_UUID);
+			}
 			default -> LOGGER.warn("Server role is {}. Please set 'server-role' in {} to 'lobby' or 'match'.", serverRole.name(), PROPERTY_PATH);
 		}
     }
 
     private void OnServerStopping(MinecraftServer server) {
-		switch (serverRole) {
-			case lobby:
-				threadService.stop();
-				break;
-			case match:
-				break;
-		}
+		threadService.stop();
     }
 
     private void OnPlayerJoin(ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
@@ -105,8 +100,7 @@ public class RankedUTA implements ModInitializer {
 					.put("timestamp", lastJoin)
 					.toString();
 
-				HttpResponse<String> response = HTTPClient.post("/player/connect", body);
-				JSONObject jsonResponse = HTTPClient.receivedResponse(response);
+				HTTPClient.post("/player/connect", body);
 			}
 			case match -> {}
 		}
@@ -124,8 +118,7 @@ public class RankedUTA implements ModInitializer {
 					.put("timestamp", lastJoin)
 					.toString();
 
-				HttpResponse<String> response = HTTPClient.post("/player/disconnect", body);
-				JSONObject jsonResponse = HTTPClient.receivedResponse(response);
+				HTTPClient.post("/player/disconnect", body);
 			}
 			case match -> {}
 		}

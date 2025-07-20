@@ -1,10 +1,5 @@
 package org.rankeduta.defines;
 
-import org.json.JSONObject;
-import org.rankeduta.RankedUTA;
-
-import java.net.http.HttpResponse;
-
 public enum ResponseCode {
     OK(0),
     ERROR(1),

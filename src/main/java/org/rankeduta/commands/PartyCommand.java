@@ -8,25 +8,12 @@ import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.ClickEvent;
 import net.minecraft.text.HoverEvent;
-import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-
-import org.json.JSONObject;
-import org.json.JSONArray;
-
-import org.rankeduta.HTTPClient;
-import org.rankeduta.HTTPClient.URIBuilder;
-import org.rankeduta.RankedUTA;
-import org.rankeduta.defines.ResponseCode;
 import org.rankeduta.commands.Command.ICommand;
 import com.mojang.brigadier.Command;
 import org.rankeduta.defines.TextStyles;
 import org.rankeduta.services.PartyService;
-
-import java.net.http.HttpResponse;
-import java.util.UUID;
 
 public class PartyCommand implements ICommand {
     @Override

@@ -3,6 +3,8 @@ package org.rankeduta.services;
 import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -10,22 +12,27 @@ import org.rankeduta.HTTPClient;
 import org.rankeduta.RankedUTA;
 
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class ThreadService {
-    public static ScheduledExecutorService queueScheduler = Executors.newScheduledThreadPool(1);
-    public static ScheduledExecutorService matchScheduler = Executors.newScheduledThreadPool(1);
+    public static ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(3);
 
-    public void start(MinecraftServer server) {
+    public void startAtLobby(MinecraftServer server) {
         startQueuePolling(server);
         startMatchPolling(server);
     }
 
+    public void startAtMatch(MinecraftServer server, UUID uuid) {
+        startHandShakePolling(server, uuid);
+    }
+
     public void startQueuePolling (MinecraftServer server) {
-        queueScheduler.scheduleAtFixedRate(() -> {
+        scheduler.scheduleAtFixedRate(() -> {
             try {
                 RankedUTA.LOGGER.debug("執行 queue 輪詢任務");
                 HttpResponse<String> response = HTTPClient.get("/queue", null);
@@ -61,17 +68,17 @@ public class ThreadService {
                             }
                         }
                     } catch (Exception e) {
-                        RankedUTA.LOGGER.error("處理某筆隊伍資料時出錯：", e);
+                        RankedUTA.LOGGER.error("處理某筆隊伍資料時出錯：{}", e.getMessage());
                     }
                 }
             } catch (Exception e) {
-                RankedUTA.LOGGER.error("輪詢任務發生例外，任務將繼續執行：", e);
+                RankedUTA.LOGGER.error("queue 輪詢任務發生例外，任務將繼續執行：{}", e.getMessage());
             }
-        }, 0, 1, TimeUnit.SECONDS);
+        }, 1, 1, TimeUnit.SECONDS);
     }
 
     public void startMatchPolling (MinecraftServer server) {
-        matchScheduler.scheduleAtFixedRate(() -> {
+        scheduler.scheduleAtFixedRate(() -> {
             try {
                 RankedUTA.LOGGER.debug("執行 match 輪詢任務");
                 HttpResponse<String> response = HTTPClient.get("/match", null);
@@ -79,39 +86,69 @@ public class ThreadService {
                 if (jsonResponse == null) return;
                 JSONArray data = jsonResponse.optJSONArray("data");
                 if (data == null || data.isEmpty()) return;
-                RankedUTA.LOGGER.info("Received Data: {}", data);
+                RankedUTA.LOGGER.info(data.toString());
                 for (int i = 0; i < data.length(); i++) {
-                    StringBuilder mainBuilder = new StringBuilder();
-                    String[] hoverMessage = new String[] {};
+                    List<Text> mainMessage = new ArrayList<>();
                     JSONObject match = data.optJSONObject(i);
                     String mode = match.optString("mode");
                     JSONArray teams = match.optJSONArray("teams");
 
                     for (int j = 0; j < teams.length(); j++) {
-                        JSONObject party = teams.optJSONObject(j);
-                        ServerPlayerEntity leader = server.getPlayerManager().getPlayer(UUID.fromString(party.optString("leader")));
+                        StringBuilder hoverMessage = new StringBuilder();
+                        JSONObject party = teams.getJSONObject(j);
                         JSONArray members = party.optJSONArray("members");
-                        hoverMessage[j] = "Party Members/n";
+                        ServerPlayerEntity leader = server.getPlayerManager().getPlayer(UUID.fromString(members.getString(0)));
+                        if (leader == null) continue;
+                        hoverMessage.append("Party Members\n");
                         for (int a = 0; a < members.length(); a++) {
                             ServerPlayerEntity member = server.getPlayerManager().getPlayer(UUID.fromString(members.getString(a)));
-                            hoverMessage[j] += member.getName().getString() + "/n";
+                            if (member == null) continue;
+                            hoverMessage.append(member.getName().getString()).append("\n");
                         }
-                        mainBuilder.append(leader.getName().getString()).append(" VS ");
-                        // TODO: StringBuilder
+                        hoverMessage.delete(hoverMessage.length()-1,hoverMessage.length());
+                        mainMessage.add(Text.literal(leader.getName().getString())
+                            .setStyle(Style.EMPTY.withHoverEvent(new HoverEvent.ShowText(Text.literal(hoverMessage.toString())))));
+                    }
+
+                    for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                        player.sendMessage(
+                            Text.literal("[Match] ")
+                                .setStyle(Style.EMPTY.withColor(0xFFFF55).withBold(true))
+                                .append(Text.literal("A new " + mode + " game will start\n").setStyle(Style.EMPTY.withColor(0xFFFFFF)))
+                                .append(mainMessage.getFirst())
+                                .append(Text.literal(" VS ").setStyle(Style.EMPTY.withColor(0xAAAAAA)))
+                                .append(mainMessage.getLast())
+                        );
                     }
                 }
-
-                for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-                    player.sendMessage(Text.literal(""));
-                }
             } catch (Exception e) {
-                RankedUTA.LOGGER.error("輪詢任務發生例外，任務將繼續執行：", e);
+                RankedUTA.LOGGER.error("match 輪詢任務發生例外，任務將繼續執行：{}", e.getMessage());
             }
-        }, 0, 10, TimeUnit.SECONDS);
+        }, 10, 10, TimeUnit.SECONDS);
+    }
+
+    public void startHandShakePolling (MinecraftServer server, UUID uuid) {
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                RankedUTA.LOGGER.debug("執行 handshake 任務");
+                JSONArray playersUUID = new JSONArray();
+                for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                    playersUUID.put(player.getUuidAsString());
+                }
+                String body = new JSONObject()
+                    .put("uuid", uuid.toString())
+                    .put("players", playersUUID)
+                    .toString();
+                HttpResponse<String> response = HTTPClient.post("/server/game/handshake", body);
+                JSONObject jsonResponse = HTTPClient.receivedResponse(response);
+                if (jsonResponse == null) return;
+            } catch (Exception e) {
+                RankedUTA.LOGGER.error("handshake 輪詢任務發生例外，任務將繼續執行：{}", e.getMessage());
+            }
+        }, 5, 5, TimeUnit.SECONDS);
     }
 
     public void stop() {
-        queueScheduler.shutdown();
-        matchScheduler.shutdown();
+        if (!scheduler.isShutdown()) scheduler.shutdown();
     }
 }

@@ -9,7 +9,6 @@ import net.minecraft.text.Text;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.rankeduta.HTTPClient;
-import org.rankeduta.RankedUTA;
 import org.rankeduta.defines.ResponseCode;
 import org.rankeduta.defines.TextStyles;
 
