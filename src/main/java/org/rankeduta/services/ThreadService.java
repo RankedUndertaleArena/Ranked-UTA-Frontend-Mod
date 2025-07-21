@@ -22,12 +22,12 @@ import java.util.concurrent.TimeUnit;
 public class ThreadService {
     public static ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(3);
 
-    public void startAtLobby(MinecraftServer server) {
+    public void startLobby(MinecraftServer server) {
         startQueuePolling(server);
         startMatchPolling(server);
     }
 
-    public void startAtMatch(MinecraftServer server, UUID uuid) {
+    public void startMatch(MinecraftServer server, UUID uuid) {
         startHandShakePolling(server, uuid);
     }
 
@@ -40,7 +40,6 @@ public class ThreadService {
                 if (jsonResponse == null) return;
                 JSONArray data = jsonResponse.optJSONArray("data");
                 if (data == null || data.isEmpty()) return;
-
                 for (int i = 0; i < data.length(); i++) {
                     try {
                         JSONObject party = data.getJSONObject(i);

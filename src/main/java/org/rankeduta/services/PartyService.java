@@ -1,6 +1,7 @@
 package org.rankeduta.services;
 
 import net.minecraft.server.PlayerManager;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.HoverEvent;
@@ -16,7 +17,7 @@ import java.net.http.HttpResponse;
 import java.util.UUID;
 
 public class PartyService {
-    public static int invite(ServerPlayerEntity player, ServerPlayerEntity target) {
+    public static int invite(ServerCommandSource source, ServerPlayerEntity player, ServerPlayerEntity target) {
         if (player == target) {
             player.sendMessage(Text.literal("你不能邀請自己加入隊伍").setStyle(TextStyles.ERROR));
             return 0;
@@ -28,18 +29,21 @@ public class PartyService {
             .toString();
         HttpResponse<String> response = HTTPClient.post("/party/invite", body);
         JSONObject jsonResponse = HTTPClient.receivedResponse(response);
-        if (jsonResponse == null) return 0;
+        if (jsonResponse == null) {
+            source.sendError(Text.literal("無法連接到伺服器或伺服器回應錯誤"));
+            return 0;
+        }
         switch (ResponseCode.fromCode(jsonResponse.getInt("status"))) {
             case OK -> {
-                player.sendMessage(Text.literal("已成功邀請 " + target.getName().getString() + " 加入你的隊伍，他們可以在 60 秒內接受邀請。")
+                player.sendMessage(Text.literal("已成功邀請 " + target.getName().getString() + " 加入你的隊伍，他們可以在 60 秒內接受邀請")
                     .setStyle(TextStyles.SUCCESS));
-                target.sendMessage(Text.literal("你已收到來自 " + player.getName().getString() + " 的隊伍邀請。你有 60 秒的時間來使用 ")
+                target.sendMessage(Text.literal("你已收到來自 " + player.getName().getString() + " 的隊伍邀請，你有 60 秒的時間來使用 ")
                     .setStyle(TextStyles.SUCCESS)
                     .append(Text.literal("/party accept " + player.getName().getString())
                         .setStyle(TextStyles.INFO
                             .withClickEvent(new ClickEvent.RunCommand("/party accept " + player.getName().getString()))
                             .withHoverEvent(new HoverEvent.ShowText(Text.literal("Click me to accept invitation.")))))
-                    .append(Text.literal(" 來加入。")
+                    .append(Text.literal(" 來加入")
                         .setStyle(TextStyles.SUCCESS)));
                 return 1;
             }
@@ -56,7 +60,7 @@ public class PartyService {
         return 0;
     }
 
-    public static int accept(ServerPlayerEntity player, ServerPlayerEntity inviter, PlayerManager playerManager) {
+    public static int accept(ServerCommandSource source, ServerPlayerEntity player, ServerPlayerEntity inviter, PlayerManager playerManager) {
         if (player == inviter) {
             player.sendMessage(Text.literal("你不能邀請自己加入隊伍").setStyle(TextStyles.ERROR));
             return 0;
@@ -67,7 +71,10 @@ public class PartyService {
             .toString();
         HttpResponse<String> response = HTTPClient.post("/party/accept", body);
         JSONObject jsonResponse = HTTPClient.receivedResponse(response);
-        if (jsonResponse == null) return 0;
+        if (jsonResponse == null) {
+            source.sendError(Text.literal("無法連接到伺服器或伺服器回應錯誤"));
+            return 0;
+        }
         ResponseCode statusCode = ResponseCode.fromCode(jsonResponse.getInt("status"));
         switch (statusCode) {
             case OK -> {
@@ -96,7 +103,7 @@ public class PartyService {
         return 0;
     }
 
-    public static int kick(ServerPlayerEntity player, ServerPlayerEntity target, PlayerManager playerManager) {
+    public static int kick(ServerCommandSource source, ServerPlayerEntity player, ServerPlayerEntity target, PlayerManager playerManager) {
         if (player == target) {
             player.sendMessage(Text.literal("You cannot kick yourself to a party.").setStyle(TextStyles.ERROR));
             return 0;
@@ -108,7 +115,10 @@ public class PartyService {
             .toString();
         HttpResponse<String> response = HTTPClient.post("/party/kick", body);
         JSONObject jsonResponse = HTTPClient.receivedResponse(response);
-        if (jsonResponse == null) return 0;
+        if (jsonResponse == null) {
+            source.sendError(Text.literal("無法連接到伺服器或伺服器回應錯誤"));
+            return 0;
+        }
         ResponseCode statusCode = ResponseCode.fromCode(jsonResponse.getInt("status"));
         switch (statusCode) {
             case OK -> {
@@ -144,7 +154,7 @@ public class PartyService {
         return 0;
     }
 
-    public static int transfer(ServerPlayerEntity player, ServerPlayerEntity target, PlayerManager playerManager) {
+    public static int transfer(ServerCommandSource source, ServerPlayerEntity player, ServerPlayerEntity target, PlayerManager playerManager) {
         if (player == target) {
             player.sendMessage(Text.literal("You cannot transfer party leadership to yourself.")
                 .setStyle(Style.EMPTY.withColor(0xFF5555)));
@@ -156,7 +166,10 @@ public class PartyService {
             .toString();
         HttpResponse<String> response = HTTPClient.post("/party/transfer", body);
         JSONObject jsonResponse = HTTPClient.receivedResponse(response);
-        if (jsonResponse == null) return 0;
+        if (jsonResponse == null) {
+            source.sendError(Text.literal("無法連接到伺服器或伺服器回應錯誤"));
+            return 0;
+        }
         ResponseCode statusCode = ResponseCode.fromCode(jsonResponse.getInt("status"));
         switch (statusCode) {
             case OK -> {
@@ -184,13 +197,16 @@ public class PartyService {
         return 0;
     }
 
-    public static int leave(ServerPlayerEntity player, PlayerManager playerManager) {
+    public static int leave(ServerCommandSource source, ServerPlayerEntity player, PlayerManager playerManager) {
         String body = new JSONObject()
             .put("player", player.getUuidAsString())
             .toString();
         HttpResponse<String> response = HTTPClient.post("/party/leave", body);
         JSONObject jsonResponse = HTTPClient.receivedResponse(response);
-        if (jsonResponse == null) return 0;
+        if (jsonResponse == null) {
+            source.sendError(Text.literal("無法連接到伺服器或伺服器回應錯誤"));
+            return 0;
+        }
         ResponseCode statusCode = ResponseCode.fromCode(jsonResponse.getInt("status"));
         switch (statusCode) {
             case OK -> {
@@ -213,11 +229,14 @@ public class PartyService {
         return 0;
     }
 
-    public static int list(ServerPlayerEntity player, PlayerManager playerManager) {
-        String body = new HTTPClient.URIBuilder().addParam("player", String.valueOf(player.getUuidAsString())).toString();
+    public static int list(ServerCommandSource source, ServerPlayerEntity player, PlayerManager playerManager) {
+        String body = new HTTPClient.URIBuilder().addParam("player", player.getUuidAsString()).toString();
         HttpResponse<String> response = HTTPClient.get("/party/list", body);
         JSONObject jsonResponse = HTTPClient.receivedResponse(response);
-        if (jsonResponse == null) return 0;
+        if (jsonResponse == null) {
+            source.sendError(Text.literal("無法連接到伺服器或伺服器回應錯誤"));
+            return 0;
+        }
         ResponseCode statusCode = ResponseCode.fromCode(jsonResponse.getInt("status"));
         switch (statusCode) {
             case OK -> {
@@ -248,13 +267,16 @@ public class PartyService {
         return 0;
     }
 
-    public static int disband(ServerPlayerEntity player, PlayerManager playerManager) {
+    public static int disband(ServerCommandSource source, ServerPlayerEntity player, PlayerManager playerManager) {
         String body = new JSONObject()
             .put("player", player.getUuidAsString())
             .toString();
         HttpResponse<String> response = HTTPClient.post("/party/disband", body);
         JSONObject jsonResponse = HTTPClient.receivedResponse(response);
-        if (jsonResponse == null) return 0;
+        if (jsonResponse == null) {
+            source.sendError(Text.literal("無法連接到伺服器或伺服器回應錯誤"));
+            return 0;
+        }
         ResponseCode statusCode = ResponseCode.fromCode(jsonResponse.getInt("status"));
         switch (statusCode) {
             case OK -> {

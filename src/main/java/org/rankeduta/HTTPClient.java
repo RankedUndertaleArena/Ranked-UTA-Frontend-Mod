@@ -31,7 +31,7 @@ public class HTTPClient {
                 queryParams.forEach((key, value) -> uriBuilder.append(key).append("=").append(value).append("&"));
                 uriBuilder.setLength(uriBuilder.length() - 1); // Remove the last '&'
             }
-            return java.net.URI.create(uriBuilder.toString());
+            return URI.create(uriBuilder.toString());
         }
     }
 
