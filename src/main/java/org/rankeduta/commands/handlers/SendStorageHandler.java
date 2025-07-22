@@ -36,7 +36,7 @@ public class SendStorageHandler {
             // NBT 轉 JSON
             String body = new JSONObject()
                 .put("server", SERVER_UUID.toString())
-                .put("data", nbtToJson(storage))
+                .put("data", storage.toString())
                 .toString();
             HTTPClient.post("/game/end", body);
             source.sendFeedback(() -> Text.literal("已將 Storage 傳送至伺服器"), false);

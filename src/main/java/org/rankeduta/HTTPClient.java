@@ -1,7 +1,12 @@
 package org.rankeduta;
 
 import org.json.JSONObject;
+import org.rankeduta.defines.ServerRole;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.URI;
 
 import java.net.http.HttpClient;
@@ -10,11 +15,11 @@ import java.net.http.HttpRequest.*;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 public class HTTPClient {
     private static final HttpClient client = HttpClient.newHttpClient();
     private static final String userAgent = "application/rankeduta";
-    private static final String apiUrl = "http://192.168.195.209:8000";
 
     public static class URIBuilder {
         private final Map<String,String> queryParams = new HashMap<>();
@@ -39,13 +44,13 @@ public class HTTPClient {
             HttpRequest.Builder builder = HttpRequest.newBuilder().version(HttpClient.Version.HTTP_1_1);
             switch (method) {
                 case "POST" ->
-                    builder.uri(URI.create(apiUrl + url))
+                    builder.uri(URI.create(RankedUTA.apiUrl + url))
                         .header("User-Agent", userAgent)
                         .header("Content-Type", "application/json")
                         .POST(BodyPublishers.ofString(body));
                 case "GET" -> {
-                    if (body == null) builder.uri(java.net.URI.create(apiUrl+url));
-                    else builder.uri(java.net.URI.create(apiUrl+url+body));
+                    if (body == null) builder.uri(java.net.URI.create(RankedUTA.apiUrl+url));
+                    else builder.uri(java.net.URI.create(RankedUTA.apiUrl+url+body));
 
                     builder.header("User-Agent", userAgent)
                         .GET();
