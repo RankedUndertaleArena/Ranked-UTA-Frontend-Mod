@@ -105,8 +105,14 @@ public class ThreadService {
                             hoverMessage.append(member.getName().getString()).append("\n");
                         }
                         hoverMessage.delete(hoverMessage.length()-1,hoverMessage.length());
-                        mainMessage.add(Text.literal(leader.getName().getString())
-                            .setStyle(Style.EMPTY.withHoverEvent(new HoverEvent.ShowText(Text.literal(hoverMessage.toString())))));
+                        switch (j) {
+                            case 0 -> mainMessage.add(Text.literal(leader.getName().getString())
+                                .setStyle(Style.EMPTY.withColor(0xFF5555).withHoverEvent(new HoverEvent.ShowText(Text.literal(hoverMessage.toString())))));
+                            case 1 -> mainMessage.add(Text.literal(leader.getName().getString())
+                                .setStyle(Style.EMPTY.withColor(0x55FFFF).withHoverEvent(new HoverEvent.ShowText(Text.literal(hoverMessage.toString())))));
+                            default -> mainMessage.add(Text.literal(leader.getName().getString())
+                                .setStyle(Style.EMPTY.withHoverEvent(new HoverEvent.ShowText(Text.literal(hoverMessage.toString())))));
+                        }
                     }
 
                     for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {

@@ -14,19 +14,20 @@ public class SendStorageCommand implements ICommand {
     public void register(CommandDispatcher<ServerCommandSource> dispatcher) {
         // 註冊 send_storage 指令
         dispatcher.register(CommandManager.literal("send_storage")
-            .then(CommandManager.argument("storage", NbtCompoundArgumentType.nbtCompound())
-                .suggests((context, builder) -> {
-                    DataCommandStorage server = context.getSource().getServer().getDataCommandStorage();
-                    server.getIds().forEach(id -> {
-                        String namespace = id.getNamespace();
-                        server.get(id).forEach((string, nbt) ->
-                            builder.suggest(namespace + ":" + string));
-                    });
-                    return builder.buildFuture();
-                })
-                .executes(new SendStorageHandler.executeSendStorage())
-                .then(CommandManager.argument("path", StringArgumentType.string())
-                    .executes(new SendStorageHandler.executeSendStorage()))
+//            .then(CommandManager.argument("type", StringArgumentType.string()))
+                .then(CommandManager.argument("storage", NbtCompoundArgumentType.nbtCompound())
+                    .suggests((context, builder) -> {
+                        DataCommandStorage server = context.getSource().getServer().getDataCommandStorage();
+                        server.getIds().forEach(id -> {
+                            String namespace = id.getNamespace();
+                            server.get(id).forEach((string, nbt) ->
+                                builder.suggest(namespace + ":" + string));
+                        });
+                        return builder.buildFuture();
+                    })
+                    .executes(new SendStorageHandler.executeSendStorage())
+//                    .then(CommandManager.argument("path", StringArgumentType.string())
+//                        .executes(new SendStorageHandler.executeSendStorage()))
             )
         );
     }
