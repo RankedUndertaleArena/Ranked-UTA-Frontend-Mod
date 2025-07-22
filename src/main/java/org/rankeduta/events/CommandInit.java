@@ -10,6 +10,7 @@ import net.minecraft.server.command.ServerCommandSource;
 import org.rankeduta.RankedUTA;
 import org.rankeduta.commands.PartyCommand;
 import org.rankeduta.commands.QueueCommand;
+import org.rankeduta.commands.SendBackCommand;
 import org.rankeduta.commands.SendStorageCommand;
 
 import static org.rankeduta.RankedUTA.serverRole;
@@ -35,7 +36,10 @@ public class CommandInit {
                         command.register(dispatcher);
                     }
                 }
-                case match -> new SendStorageCommand().register(dispatcher);
+                case match -> {
+                    new SendStorageCommand().register(dispatcher);
+                    new SendBackCommand().register(dispatcher);
+                }
                 default -> RankedUTA.LOGGER.warn("未知的伺服器角色：{}，無法註冊指令", serverRole);
             }
         });

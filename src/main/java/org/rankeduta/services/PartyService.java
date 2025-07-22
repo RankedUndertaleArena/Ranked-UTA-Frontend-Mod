@@ -230,7 +230,7 @@ public class PartyService {
     }
 
     public static int list(ServerCommandSource source, ServerPlayerEntity player, PlayerManager playerManager) {
-        String body = new HTTPClient.URIBuilder().addParam("player", player.getUuidAsString()).toString();
+        String body = new HTTPClient.URIBuilder().addParam("player", player.getUuidAsString()).build().toString();
         HttpResponse<String> response = HTTPClient.get("/party/list", body);
         JSONObject jsonResponse = HTTPClient.receivedResponse(response);
         if (jsonResponse == null) {

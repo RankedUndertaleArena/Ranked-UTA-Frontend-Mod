@@ -25,9 +25,8 @@ public class HTTPClient {
         }
 
         public URI build() {
-            StringBuilder uriBuilder = new StringBuilder(apiUrl);
+            StringBuilder uriBuilder = new StringBuilder("?");
             if (!queryParams.isEmpty()) {
-                uriBuilder.append("?");
                 queryParams.forEach((key, value) -> uriBuilder.append(key).append("=").append(value).append("&"));
                 uriBuilder.setLength(uriBuilder.length() - 1); // Remove the last '&'
             }
