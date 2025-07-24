@@ -39,6 +39,7 @@ public class SendDataCommand implements Command.ICommand {
                         });
                         return builder.buildFuture();
                     })
+                    .executes(handler::execute)
                     .then(CommandManager.argument("key", StringArgumentType.string())
                         .executes(handler::execute)
                     )
