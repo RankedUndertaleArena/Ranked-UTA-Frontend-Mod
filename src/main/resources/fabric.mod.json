@@ -3,7 +3,7 @@
 	"id": "rankeduta",
 	"version": "${version}",
 	"name": "Ranked UTA",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "A mod that adds a ranked mode to Undertale Arena in Minecraft.",
 	"authors": [
 		"Focal_Salt"
 	],
@@ -11,7 +11,7 @@
 		"homepage": "https://fabricmc.net/",
 		"sources": "https://github.com/FabricMC/fabric-example-mod"
 	},
-	"license": "CC0-1.0",
+	"license": "Apache-2.0",
 	"icon": "assets/rankeduta/icon.png",
 	"environment": "*",
 	"entrypoints": {
@@ -19,7 +19,9 @@
 			"org.rankeduta.RankedUTA"
 		]
 	},
-	"mixins": [],
+	"mixins": [
+		"RankedUTA.mixins.json"
+	],
 	"depends": {
 		"fabricloader": ">=0.16.14",
 		"minecraft": "~1.21.6",

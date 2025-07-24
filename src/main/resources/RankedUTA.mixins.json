@@ -1,0 +1,15 @@
+{
+	"required": true,
+	"package": "org.rankeduta.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+		"JoinMessageMixin",
+		"LeaveMessageMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}
