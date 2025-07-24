@@ -26,7 +26,12 @@ public class PartyHandler implements Command.IHandler {
         PlayerManager playerManager = source.getServer().getPlayerManager();
         ServerPlayerEntity player = source.getPlayer();
         String action = StringArgumentType.getString(context, "action");
-        ServerPlayerEntity target = source.getServer().getPlayerManager().getPlayer(StringArgumentType.getString(context, "target"));
+        ServerPlayerEntity target = null;
+        String targetName;
+        try {
+            targetName = StringArgumentType.getString(context, "target");
+            target = playerManager.getPlayer(targetName);
+        } catch (IllegalArgumentException ignored) {}
 
         if (player == null) {
             source.sendError(Text.literal("你必須在遊戲中才能使用此命令。"));
@@ -109,6 +114,8 @@ public class PartyHandler implements Command.IHandler {
                 player.sendMessage(Text.literal(target.getName().getString() + " 已經在你的隊伍中。").setStyle(Style.EMPTY.withColor(0xFF5555)));
             case PARTY_ALREADY_HAVE ->
                 player.sendMessage(Text.literal(target.getName().getString() + " 已經在其他隊伍中。").setStyle(Style.EMPTY.withColor(0xFF5555)));
+            case PARTY_LOCKED ->
+                player.sendMessage(Text.literal("正在匹配中，無法邀請玩家。").setStyle(Style.EMPTY.withColor(0xFF5555)));
         }
         return 0;
     }
@@ -139,8 +146,6 @@ public class PartyHandler implements Command.IHandler {
                 player.sendMessage(Text.literal("你已經在其他隊伍中。").setStyle(Style.EMPTY.withColor(0xFF5555)));
             case PARTY_INVITE_NOT_FOUND ->
                 player.sendMessage(Text.literal("找不到邀請，請確保你已被邀請加入隊伍。").setStyle(Style.EMPTY.withColor(0xFF5555)));
-            case PARTY_LOCKED ->
-                player.sendMessage(Text.literal("正在匹配中，無法邀請玩家。").setStyle(Style.EMPTY.withColor(0xFF5555)));
         }
         return 0;
     }

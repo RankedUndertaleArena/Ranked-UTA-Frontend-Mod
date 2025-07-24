@@ -21,19 +21,25 @@ public class SendDataHandler implements Command.IHandler {
         ServerCommandSource source = context.getSource();
         ServerPlayerEntity player = source.getPlayer();
         String type = StringArgumentType.getString(context, "type");
-
         NbtCompound nbt = NbtCompoundArgumentType.getNbtCompound(context, "nbt");
-        String storage = StringArgumentType.getString(context, "storage");
-        String key = StringArgumentType.getString(context, "key");
+        String storage = null , key = null;
+        try {
+            storage = StringArgumentType.getString(context, "storage");
+        } catch (IllegalArgumentException ignored) {}
+        try {
+            key = StringArgumentType.getString(context, "key");
+        } catch (IllegalArgumentException ignored) {}
 
         if (type == null || type.isEmpty()) {
             source.sendError(Text.literal("資料類型不可為空"));
             return 0;
         }
 
-        if (!storage.isEmpty()) {
-            if (!key.isEmpty()) nbt = source.getServer().getDataCommandStorage().get(Identifier.of(storage)).getCompound(key).orElse(new NbtCompound());
-            else nbt = source.getServer().getDataCommandStorage().get(Identifier.of(storage));
+        if (storage != null && !storage.isEmpty()) {
+            if (key != null && !key.isEmpty())
+                nbt = source.getServer().getDataCommandStorage().get(Identifier.of(storage)).getCompound(key).orElse(new NbtCompound());
+            else
+                nbt = source.getServer().getDataCommandStorage().get(Identifier.of(storage));
         }
 
         if (nbt == null) {
@@ -51,8 +57,7 @@ public class SendDataHandler implements Command.IHandler {
                     source.sendError(Text.literal("請在遊戲中使用此指令"));
                     return 0;
                 }
-                player.sendMessage(Text.literal("正在將玩家設定傳送至伺服器：" + nbt)
-                    .append(Text.literal(storage).setStyle(Style.EMPTY.withColor(0xFFFF55))));
+                player.sendMessage(Text.literal("正在將玩家設定傳送至伺服器：" + nbt).setStyle(Style.EMPTY.withColor(0xFFFF55)));
                 return 1;
             }
             case "game_stats" -> {

@@ -24,7 +24,7 @@ public class BackendService {
                     .POST(HttpRequest.BodyPublishers.ofString(arg));
                 case "GET" -> {
                     if (arg == null || arg.isEmpty())  builder.uri(URI.create(API_URL + url));
-                    else  builder.uri(URI.create(API_URL + url + "?" + arg));
+                    else  builder.uri(URI.create(API_URL + url + arg));
 
                     builder.GET();
                 }

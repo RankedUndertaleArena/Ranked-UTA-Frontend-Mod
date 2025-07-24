@@ -12,10 +12,14 @@ import org.json.JSONObject;
 import org.rankeduta.RankedUTA;
 import org.rankeduta.utils.TextBuilder;
 
+import java.net.http.HttpResponse;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import static org.rankeduta.RankedUTA.LOGGER;
+import static org.rankeduta.RankedUTA.SERVER_UUID;
 
 public class ThreadService {
     public static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
@@ -141,8 +145,22 @@ public class ThreadService {
                     .put("uuid", uuid.toString())
                     .put("players", playersUUID)
                     .toString();
-                JSONObject jsonResponse = BackendService.receivedResponse(BackendService.sendRequest("post", "/server/game/handshake", body));
-                if (jsonResponse == null) RankedUTA.LOGGER.error("Failed to connect to the handshake service, please check if the service is running.");
+                HttpResponse<String> response = BackendService.sendRequest("post", "/server/game/handshake", body);
+                if (response == null) RankedUTA.LOGGER.error("Failed to connect to the backend service, please check if the service is running.");
+                else {
+                    int statusCode = response.statusCode();
+                    if (statusCode == 404) {
+                        body = new JSONObject()
+                            .put("uuid", SERVER_UUID.toString())
+                            .put("port", server.getServerPort())
+                            .toString();
+                        JSONObject jsonResponse = BackendService.receivedResponse(BackendService.sendRequest("post", "/server/game/register", body));
+                        if (jsonResponse != null) {
+                            ThreadService.startMatch(server, SERVER_UUID);
+                            LOGGER.info("Game server registered, UUID: {}, Port: {}", SERVER_UUID, server.getServerPort());
+                        }
+                    }
+                }
             } catch (Exception e) {
                 RankedUTA.LOGGER.error("HandShake Task encountered an error: {}", e.getMessage());
             }
