@@ -46,8 +46,8 @@ public class RankedUTA implements ModInitializer {
 		LOGGER.info("Loading server properties...");
 		// Implementation for loading properties
 		Properties properties = new Properties();
-		try {
-			properties.load(new FileInputStream(PROPERTY_PATH));
+		try (FileInputStream propertyInput = new FileInputStream(PROPERTY_PATH)) {
+			properties.load(propertyInput);
 
 			if (!properties.containsKey("server-role")) {
 				try (FileOutputStream out = new FileOutputStream(PROPERTY_PATH, true)) {
