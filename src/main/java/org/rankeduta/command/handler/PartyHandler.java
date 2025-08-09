@@ -69,12 +69,12 @@ public class PartyHandler implements Command.IHandler {
 
     private interface ResponseAction
     {
-        int checkResponse(ServerPlayerEntity player, ServerPlayerEntity target, PlayerManager playerManager, JSONObject jsonResponse); //可用lambda
+        int checkResponse(ServerPlayerEntity player, ServerPlayerEntity target, PlayerManager playerManager, JSONObject jsonResponse); //可用 lambda
 
-        ResponseAction EMPTY = (p, t, pM, jR) -> 0; //responseActionMap內找不到時用
+        ResponseAction EMPTY = (p, t, pM, jR) -> 0; //responseActionMap 內找不到時用
     }
 
-    private record ErrorResponseAction(String errorMessage) implements ResponseAction //專為ResponseCode不是OK時使用
+    private record ErrorResponseAction(String errorMessage) implements ResponseAction //專為 ResponseCode 不是 OK 時使用
     {
         @Override
         public int checkResponse(ServerPlayerEntity player, ServerPlayerEntity target, PlayerManager playerManager, JSONObject jsonResponse)
@@ -87,8 +87,8 @@ public class PartyHandler implements Command.IHandler {
     private static abstract class RunAction
     {
         private final String url; //sendRequest 會用到
-        private final String method = this instanceof ListAction ? "get" : "post"; //只有/list用的是get 其他都用post
-        protected final JSONObject modifiableBody = new JSONObject(); //createBody內可以修改
+        private final String method = this instanceof ListAction ? "get" : "post"; //只有/list 用的是 get 其他都用 post
+        protected final JSONObject modifiableBody = new JSONObject(); //createBody 內可以修改
         public static final Style ERROR_MESSAGE_STYLE = Style.EMPTY.withColor(0xFF5555);
 
         protected RunAction(String url)
@@ -98,7 +98,7 @@ public class PartyHandler implements Command.IHandler {
 
         protected int run(ServerPlayerEntity player, ServerPlayerEntity target, PlayerManager playerManager)
         {
-            String body = createBody(player, target); //各個子類別自行實作json body
+            String body = createBody(player, target); //各個子類別自行實作 json body
             JSONObject jsonResponse = BackendService.receivedResponse(BackendService.sendRequest(method, "/party/" + url, body));
             if (jsonResponse == null) {
                 player.sendMessage(Text.literal("無法連接到隊伍服務，請稍後再試。").setStyle(ERROR_MESSAGE_STYLE));
@@ -124,7 +124,7 @@ public class PartyHandler implements Command.IHandler {
         @Override
         protected int run(ServerPlayerEntity player, ServerPlayerEntity target, PlayerManager playerManager)
         {
-            //這個class是需要做player和target的null check的
+            //這個 class 是需要做 player 和 target 的 null check 的
             if (target == null) {
                 player.sendMessage(Text.literal("目標玩家不存在或不在線上。").setStyle(ERROR_MESSAGE_STYLE));
                 return 0;
@@ -134,7 +134,7 @@ public class PartyHandler implements Command.IHandler {
                 return 0;
             }
 
-            return super.run(player, target, playerManager); //通過了null檢查後再執行親類別的
+            return super.run(player, target, playerManager); //通過了 null 檢查後再執行親類別的
         }
     }
 
@@ -160,12 +160,12 @@ public class PartyHandler implements Command.IHandler {
             responseActionMap.put(ResponseCode.PARTY_ALREADY_IN, (player, target, playerManager, jsonResponse) ->
             {
                 player.sendMessage(Text.literal(target.getName().getString() + " 已經在你的隊伍中。").setStyle(ERROR_MESSAGE_STYLE));
-                return 0; //使用player參數 因此不能用ErrorResponseAction
+                return 0; //使用 player 參數 因此不能用 ErrorResponseAction
             });
             responseActionMap.put(ResponseCode.PARTY_ALREADY_HAVE, (player, target, playerManager, jsonResponse) ->
             {
                 player.sendMessage(Text.literal(target.getName().getString() + " 已經在其他隊伍中。").setStyle(ERROR_MESSAGE_STYLE));
-                return 0; //使用player參數 因此不能用ErrorResponseAction
+                return 0; //使用 player 參數 因此不能用 ErrorResponseAction
             });
             responseActionMap.put(ResponseCode.PARTY_LOCKED, new ErrorResponseAction("正在匹配中，無法邀請玩家。"));
         }
