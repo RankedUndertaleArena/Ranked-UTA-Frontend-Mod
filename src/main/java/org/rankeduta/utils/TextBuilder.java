@@ -1,5 +1,6 @@
 package org.rankeduta.utils;
 
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 
@@ -20,11 +21,9 @@ public class TextBuilder {
     }
 
     public Text build() {
-        if (parts.isEmpty()) return Text.empty();
-        Text result = parts.getFirst();
-        for (int i = 1; i < parts.size(); i++) {
-            result = result.copy().append(parts.get(i));
-        }
+        MutableText result = Text.empty();
+	    for (Text part : parts)
+		    result.append(part);
         return result;
     }
 }
