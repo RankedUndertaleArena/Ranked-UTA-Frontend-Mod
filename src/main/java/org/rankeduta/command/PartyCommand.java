@@ -7,27 +7,19 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.rankeduta.command.handler.PartyHandler;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class PartyCommand implements Command.ICommand {
     @Override
     public void register(CommandDispatcher<ServerCommandSource> dispatcher) {
+        String[] suggestions = {"invite", "accept", "kick", "transfer", "disband", "leave", "list"};
         // Register the /party command
         PartyHandler handler = new PartyHandler();
         dispatcher.register(CommandManager.literal("party")
             .then(CommandManager.argument("action", StringArgumentType.string())
                 .suggests((context, builder) -> {
-                    List<String> actions = new ArrayList<>();
-                    actions.add("invite");
-                    actions.add("accept");
-                    actions.add("kick");
-                    actions.add("transfer");
-                    actions.add("disband");
-                    actions.add("leave");
-                    actions.add("list");
-
-                    actions.forEach(builder::suggest);
+                    for (String action : suggestions)
+                        builder.suggest(action);
                     return builder.buildFuture();
                 })
                 .executes(handler::execute)

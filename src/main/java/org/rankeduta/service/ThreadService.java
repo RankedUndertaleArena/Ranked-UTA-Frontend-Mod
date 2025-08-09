@@ -40,7 +40,7 @@ public class ThreadService {
                 if (jsonResponse != null) {
                     JSONArray data = jsonResponse.optJSONArray("data");
                     if (data == null || data.isEmpty()) return;
-                    for (int i = 0; i < data.length(); i++) {
+                    for (int i = 0, len = data.length();i < len; i++) {
                         try {
                             JSONObject party = data.getJSONObject(i);
                             String mode = party.optString("mode");

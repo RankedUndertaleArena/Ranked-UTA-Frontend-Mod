@@ -8,9 +8,6 @@ import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import org.rankeduta.command.handler.SendDataHandler;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class SendDataCommand implements Command.ICommand {
     @Override
     public void register(CommandDispatcher<ServerCommandSource> dispatcher) {
@@ -19,11 +16,8 @@ public class SendDataCommand implements Command.ICommand {
         dispatcher.register(CommandManager.literal("senddata")
             .then(CommandManager.argument("type", StringArgumentType.string())
                 .suggests((context, builder) -> {
-                    List<String> types = new ArrayList<>();
-                    types.add("player_setting");
-                    types.add("game_stats");
-
-                    types.forEach(builder::suggest);
+                    builder.suggest("player_setting");
+                    builder.suggest("game_stats");
                     return builder.buildFuture();
                 })
                 .then(CommandManager.argument("nbt", NbtCompoundArgumentType.nbtCompound())
