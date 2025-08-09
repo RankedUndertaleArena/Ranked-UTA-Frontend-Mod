@@ -44,7 +44,7 @@ public class Event {
     }
 
     public static void ServerStopping(MinecraftServer server) {
-        if (serverRole.equals(ServerRole.LOBBY) || serverRole.equals(ServerRole.MATCH)) ThreadService.stop();
+        if (serverRole == ServerRole.LOBBY || serverRole == ServerRole.MATCH) ThreadService.stop();
     }
 
     public static void PlayerJoin(ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
@@ -113,7 +113,7 @@ public class Event {
     }
 
     public static void PlayerLeave(ServerPlayNetworkHandler handler, MinecraftServer server) {
-        if (serverRole.equals(ServerRole.LOBBY)) {
+        if (serverRole == ServerRole.LOBBY) {
             ServerPlayerEntity player = handler.getPlayer();
             long lastJoin = System.currentTimeMillis();
 
