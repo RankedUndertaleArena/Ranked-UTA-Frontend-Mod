@@ -8,20 +8,14 @@ import java.util.List;
 
 public class TextBuilder {
     private final List<Text> parts = new ArrayList<>();
-    private Style style = Style.EMPTY;
-
-    public TextBuilder setStyle(Style style) {
-        this.style = style;
-        return this;
-    }
 
     public TextBuilder append(Text text) {
-        parts.add(text.copy().setStyle(style));
+        parts.add(text.copy());
         return this;
     }
 
     public TextBuilder append(String text) {
-        parts.add(Text.literal(text).setStyle(style));
+        parts.add(Text.literal(text).setStyle(Style.EMPTY));
         return this;
     }
 

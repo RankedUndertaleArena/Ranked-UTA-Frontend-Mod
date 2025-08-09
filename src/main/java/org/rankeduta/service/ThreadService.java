@@ -22,7 +22,7 @@ import static org.rankeduta.RankedUTA.LOGGER;
 import static org.rankeduta.RankedUTA.SERVER_UUID;
 
 public class ThreadService {
-    public static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+    public static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
 
     public static void startLobby(MinecraftServer server) {
         PollingQueueAndMatch(server);
@@ -67,69 +67,77 @@ public class ThreadService {
             } catch (Exception e) {
                 RankedUTA.LOGGER.error("Queue Polling Task encountered an error: {}", e.getMessage());
             }
-            try {
-                RankedUTA.LOGGER.debug("Match Polling Task is running...");
-                JSONObject jsonResponse = BackendService.receivedResponse(BackendService.sendRequest("get", "/match", null));
-                if (jsonResponse != null) {
-                    JSONArray data = jsonResponse.optJSONArray("data");
-                    if (data == null || data.isEmpty()) return;
-                    for (int i = 0; i < data.length(); i++) {
-                        TextBuilder boardCastBuilder = new TextBuilder()
-                            .setStyle(Style.EMPTY.withColor(0xFFFF55).withBold(true))
-                            .append(Text.literal("[")).setStyle(Style.EMPTY.withBold(true))
-                            .append(Text.literal("匹配")).setStyle(Style.EMPTY.withColor(0xFFFF55).withBold(true))
-                            .append(Text.literal("]")).setStyle(Style.EMPTY)
-                            .append(Text.literal(" 一場新的遊戲正在進行中，隊伍成員如下：\n"));
+            scheduler.schedule(() -> {
+                try {
+                    RankedUTA.LOGGER.debug("Match Polling Task is running...");
+                    JSONObject jsonResponse = BackendService.receivedResponse(BackendService.sendRequest("get", "/match", null));
+                    if (jsonResponse != null) {
+                        JSONArray data = jsonResponse.optJSONArray("data");
+                        if (data == null || data.isEmpty()) return;
+                        for (int i = 0; i < data.length(); i++) {
+                            TextBuilder boardCastBuilder = new TextBuilder()
+                                .append(Text.literal("[").setStyle(Style.EMPTY.withColor(0xFFFF55).withBold(true)))
+                                .append(Text.literal("匹配").setStyle(Style.EMPTY.withColor(0xFFFFFF).withBold(true)))
+                                .append(Text.literal("]").setStyle(Style.EMPTY.withColor(0xFFFF55).withBold(true)))
+                                .append(Text.literal(" 一場新的遊戲正在進行中，隊伍成員如下：\n").setStyle(Style.EMPTY.withColor(0xFFFFFF)));
 
-                        JSONObject match = data.optJSONObject(i);
-                        String mode = match.optString("mode");
-                        JSONArray teams = match.optJSONArray("teams");
+                            JSONObject match = data.optJSONObject(i);
+                            String mode = match.optString("mode");
+                            JSONArray teams = match.optJSONArray("teams");
 
-                        for (int j = 0; j < teams.length(); j++) {
-                            TextBuilder partyHoverBuilder = new TextBuilder()
-                                .setStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true))
-                                .append(Text.literal("隊伍成員：\n"))
-                                .setStyle(Style.EMPTY);
+                            for (int j = 0; j < teams.length(); j++) {
+                                TextBuilder partyHoverBuilder = new TextBuilder()
+                                    .append(Text.literal("隊伍成員：\n").setStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true)));
 
-                            JSONObject party = teams.getJSONObject(j);
-                            JSONArray members = party.optJSONArray("members");
-                            ServerPlayerEntity leader = server.getPlayerManager().getPlayer(UUID.fromString(members.getString(0)));
-                            if (leader == null) continue;
-                            if (!mode.equals("solo")) {
-                                for (int a = 0; a < members.length(); a++) {
-                                    ServerPlayerEntity member = server.getPlayerManager().getPlayer(UUID.fromString(members.getString(a)));
-                                    if (member == null) continue;
-                                    Text actionBarMessage = Text.literal("匹配成功，正在準備遊戲...").setStyle(Style.EMPTY.withColor(0xFFFF55));
-                                    member.networkHandler.sendPacket(new GameMessageS2CPacket(actionBarMessage, true));
-                                    partyHoverBuilder = partyHoverBuilder.append("\n" + member.getName().getString());
-                                }
+                                JSONObject party = teams.getJSONObject(j);
+                                JSONArray members = party.optJSONArray("members");
+                                ServerPlayerEntity leader = server.getPlayerManager().getPlayer(UUID.fromString(members.getString(0)));
+                                if (leader == null) continue;
+                                if (!mode.equals("solo")) {
+                                    for (int a = 0; a < members.length(); a++) {
+                                        ServerPlayerEntity member = server.getPlayerManager().getPlayer(UUID.fromString(members.getString(a)));
+                                        if (member == null) continue;
+                                        Text actionBarMessage = Text.literal("匹配成功，正在準備遊戲...").setStyle(Style.EMPTY.withColor(0xFFFF55));
+                                        member.networkHandler.sendPacket(new GameMessageS2CPacket(actionBarMessage, true));
+                                        partyHoverBuilder = partyHoverBuilder.append("\n" + member.getName().getString());
+                                    }
 
-                                switch (j) {
-                                    case 0 -> boardCastBuilder.append(Text.literal(leader.getName().getString())
-                                        .setStyle(Style.EMPTY.withColor(0xFF5555).withHoverEvent(new HoverEvent.ShowText(partyHoverBuilder.build()))))
-                                        .append(Text.literal(" VS ").setStyle(Style.EMPTY.withColor(0xAAAAAA)));
-                                    case 1 -> boardCastBuilder.append(Text.literal(leader.getName().getString())
-                                        .setStyle(Style.EMPTY.withColor(0x55FFFF).withHoverEvent(new HoverEvent.ShowText(partyHoverBuilder.build()))));
-                                }
-                            } else {
-                                switch (j) {
-                                    case 0 -> boardCastBuilder.append(Text.literal(leader.getName().getString())
-                                        .setStyle(Style.EMPTY.withColor(0xFF5555)))
-                                        .append(Text.literal(" VS ").setStyle(Style.EMPTY.withColor(0xAAAAAA)));
-                                    case 1 -> boardCastBuilder.append(Text.literal(leader.getName().getString())
-                                        .setStyle(Style.EMPTY.withColor(0x55FFFF)));
+                                    switch (j) {
+                                        case 0 ->
+                                            boardCastBuilder.append(Text.literal(leader.getName().getString()).setStyle(Style.EMPTY.withColor(0xFF5555)
+                                                    .withHoverEvent(new HoverEvent.ShowText(partyHoverBuilder.build()))))
+                                            .append(Text.literal(" VS ").setStyle(Style.EMPTY.withColor(0xAAAAAA)));
+                                        case 1 ->
+                                            boardCastBuilder.append(Text.literal(leader.getName().getString()).setStyle(Style.EMPTY.withColor(0x55FFFF)
+                                                .withHoverEvent(new HoverEvent.ShowText(partyHoverBuilder.build()))));
+                                    }
+                                } else {
+                                    for (int a = 0; a < members.length(); a++) {
+                                        ServerPlayerEntity member = server.getPlayerManager().getPlayer(UUID.fromString(members.getString(a)));
+                                        if (member == null) continue;
+                                        Text actionBarMessage = Text.literal(">>> 匹配成功，正在準備遊戲 <<<").setStyle(Style.EMPTY.withColor(0xFFFF55));
+                                        member.networkHandler.sendPacket(new GameMessageS2CPacket(actionBarMessage, true));
+                                    }
+
+                                    switch (j) {
+                                        case 0 ->
+                                            boardCastBuilder.append(Text.literal(leader.getName().getString()).setStyle(Style.EMPTY.withColor(0xFF5555)))
+                                            .append(Text.literal(" VS ").setStyle(Style.EMPTY.withColor(0xAAAAAA)));
+                                        case 1 ->
+                                            boardCastBuilder.append(Text.literal(leader.getName().getString()).setStyle(Style.EMPTY.withColor(0x55FFFF)));
+                                    }
                                 }
                             }
-                        }
 
-                        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-                            player.sendMessage(boardCastBuilder.build());
+                            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                                player.sendMessage(boardCastBuilder.build());
+                            }
                         }
-                    }
-                } else RankedUTA.LOGGER.warn("Could not connect to the match service, please check if the service is running.");
-            } catch (Exception e) {
-                RankedUTA.LOGGER.error("Match Polling Task encountered an error: {}", e.getMessage());
-            }
+                    } else RankedUTA.LOGGER.warn("Could not connect to the match service, please check if the service is running.");
+                } catch (Exception e) {
+                    RankedUTA.LOGGER.error("Match Polling Task encountered an error: {}", e.getMessage());
+                }
+            }, 1, TimeUnit.SECONDS);
         }, 1, 1, TimeUnit.SECONDS);
     }
 
@@ -156,7 +164,6 @@ public class ThreadService {
                             .toString();
                         JSONObject jsonResponse = BackendService.receivedResponse(BackendService.sendRequest("post", "/server/game/register", body));
                         if (jsonResponse != null) {
-                            ThreadService.startMatch(server, SERVER_UUID);
                             LOGGER.info("Game server registered, UUID: {}, Port: {}", SERVER_UUID, server.getServerPort());
                         }
                     }

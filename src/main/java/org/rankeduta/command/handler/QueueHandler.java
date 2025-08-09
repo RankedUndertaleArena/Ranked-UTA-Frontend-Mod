@@ -53,7 +53,7 @@ public class QueueHandler implements Command.IHandler {
                     ServerPlayerEntity member = playerManager.getPlayer(uuid);
                     if (member == null) continue;
                     if (mode.equalsIgnoreCase("leave"))
-                        member.sendMessage(Text.literal("你已離開匹配隊列...").setStyle(Style.EMPTY.withColor(0xFF5555)));
+                        member.sendMessage(Text.literal("你已離開匹配隊列...").setStyle(Style.EMPTY.withColor(0x55FF55)));
                     else
                         member.sendMessage(Text.literal("你已加入 " + mode + " 匹配隊列").setStyle(Style.EMPTY.withColor(0x55FF55)));
                 }
