@@ -18,16 +18,13 @@ public class PartyCommand implements Command.ICommand {
         dispatcher.register(CommandManager.literal("party")
             .then(CommandManager.argument("action", StringArgumentType.string())
                 .suggests((context, builder) -> {
-                    List<String> actions = new ArrayList<>();
-                    actions.add("invite");
-                    actions.add("accept");
-                    actions.add("kick");
-                    actions.add("transfer");
-                    actions.add("disband");
-                    actions.add("leave");
-                    actions.add("list");
+                    String[] actionsArray = {
+                        "invite", "accept", "kick", "transfer", "disband", "leave", "list"
+                    };
 
-                    actions.forEach(builder::suggest);
+                    for (String action : actionsArray) {
+                        builder.suggest(action);
+                    }
                     return builder.buildFuture();
                 })
                 .executes(handler::execute)
