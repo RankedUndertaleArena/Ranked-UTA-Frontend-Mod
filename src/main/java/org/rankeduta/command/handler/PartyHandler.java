@@ -79,17 +79,17 @@ public class PartyHandler implements Command.IHandler {
         @Override
         public int checkResponse(ServerPlayerEntity player, ServerPlayerEntity target, PlayerManager playerManager, JSONObject jsonResponse)
         {
-            player.sendMessage(Text.literal(errorMessage).setStyle(RunAction.ERROR_MESSAGE_STYLE)); //傳送固定的訊息
+            player.sendMessage(Text.literal(errorMessage).setStyle(Style.EMPTY.withColor(0xFF5555))); //傳送固定的訊息
             return 0;
         }
     }
 
     private static abstract class RunAction
     {
+        protected final Map<ResponseCode, ResponseAction> responseActionMap = new EnumMap<>(ResponseCode.class);
         private final String url; //sendRequest 會用到
         private final String method = this instanceof ListAction ? "get" : "post"; //只有/list 用的是 get 其他都用 post
         protected final JSONObject modifiableBody = new JSONObject(); //createBody 內可以修改
-        public static final Style ERROR_MESSAGE_STYLE = Style.EMPTY.withColor(0xFF5555);
 
         protected RunAction(String url)
         {
@@ -101,7 +101,7 @@ public class PartyHandler implements Command.IHandler {
             String body = createBody(player, target); //各個子類別自行實作 json body
             JSONObject jsonResponse = BackendService.receivedResponse(BackendService.sendRequest(method, "/party/" + url, body));
             if (jsonResponse == null) {
-                player.sendMessage(Text.literal("無法連接到隊伍服務，請稍後再試。").setStyle(ERROR_MESSAGE_STYLE));
+                player.sendMessage(Text.literal("無法連接到隊伍服務，請稍後再試。").setStyle(Style.EMPTY.withColor(0xFF5555)));
                 return 0;
             }
 
@@ -110,13 +110,11 @@ public class PartyHandler implements Command.IHandler {
         }
 
         protected abstract String createBody(ServerPlayerEntity player, ServerPlayerEntity target);
-
-        protected final Map<ResponseCode, ResponseAction> responseActionMap = new EnumMap<>(ResponseCode.class);
     }
 
-    private static abstract class NeedPlayerAction extends RunAction
+    private static abstract class NeedPlayerAction extends RunAction //處理邀請、接受、踢出或轉移隊伍
     {
-        protected NeedPlayerAction(String url) //處理邀請、接受、踢出或轉移隊伍
+        protected NeedPlayerAction(String url)
         {
             super(url);
         }
@@ -126,11 +124,11 @@ public class PartyHandler implements Command.IHandler {
         {
             //這個 class 是需要做 player 和 target 的 null check 的
             if (target == null) {
-                player.sendMessage(Text.literal("目標玩家不存在或不在線上。").setStyle(ERROR_MESSAGE_STYLE));
+                player.sendMessage(Text.literal("目標玩家不存在或不在線上。").setStyle(Style.EMPTY.withColor(0xFF5555)));
                 return 0;
             }
             if (player == target) {
-                player.sendMessage(Text.literal("你不能對自己執行此操作。").setStyle(ERROR_MESSAGE_STYLE));
+                player.sendMessage(Text.literal("你不能對自己執行此操作。").setStyle(Style.EMPTY.withColor(0xFF5555)));
                 return 0;
             }
 
@@ -159,12 +157,12 @@ public class PartyHandler implements Command.IHandler {
             responseActionMap.put(ResponseCode.PARTY_MISSING_PERMISSION, new ErrorResponseAction("你沒有權限邀請玩家加入隊伍。"));
             responseActionMap.put(ResponseCode.PARTY_ALREADY_IN, (player, target, playerManager, jsonResponse) ->
             {
-                player.sendMessage(Text.literal(target.getName().getString() + " 已經在你的隊伍中。").setStyle(ERROR_MESSAGE_STYLE));
+                player.sendMessage(Text.literal(target.getName().getString() + " 已經在你的隊伍中。").setStyle(Style.EMPTY.withColor(0xFF5555)));
                 return 0; //使用 player 參數 因此不能用 ErrorResponseAction
             });
             responseActionMap.put(ResponseCode.PARTY_ALREADY_HAVE, (player, target, playerManager, jsonResponse) ->
             {
-                player.sendMessage(Text.literal(target.getName().getString() + " 已經在其他隊伍中。").setStyle(ERROR_MESSAGE_STYLE));
+                player.sendMessage(Text.literal(target.getName().getString() + " 已經在其他隊伍中。").setStyle(Style.EMPTY.withColor(0xFF5555)));
                 return 0; //使用 player 參數 因此不能用 ErrorResponseAction
             });
             responseActionMap.put(ResponseCode.PARTY_LOCKED, new ErrorResponseAction("正在匹配中，無法邀請玩家。"));
@@ -334,7 +332,7 @@ public class PartyHandler implements Command.IHandler {
                 player.sendMessage(Text.literal("你已成功離開隊伍。").setStyle(Style.EMPTY.withColor(0x55FF55)));
                 JSONObject receivedData = jsonResponse.getJSONObject("data");
                 JSONArray members = receivedData.getJSONArray("members");
-                for (int i = 0; i < members.length(); i++) {
+                for (int i = 0, len = members.length(); i < len; i++) {
                     ServerPlayerEntity member = playerManager.getPlayer(UUID.fromString(members.getString(i)));
                     if (member == null) continue;
                     if (member != player)
@@ -363,7 +361,7 @@ public class PartyHandler implements Command.IHandler {
                 player.sendMessage(Text.literal("你已成功解散隊伍。").setStyle(Style.EMPTY.withColor(0x55FF55)));
                 JSONObject receivedData = jsonResponse.getJSONObject("data");
                 JSONArray members = receivedData.getJSONArray("members");
-                for (int i = 0; i < members.length(); i++) {
+                for (int i = 0, len = members.length(); i < len; i++) {
                     ServerPlayerEntity member = playerManager.getPlayer(UUID.fromString(members.getString(i)));
                     if (member == null) continue;
                     if (member != player)

@@ -34,14 +34,14 @@ public class Command {
 
     public static void register(){
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-            if (serverRole.equals(ServerRole.LOBBY)) {
+            if (serverRole == ServerRole.LOBBY) {
                 for (ICommand command : GENERAL_COMMANDS) {
                     command.register(dispatcher);
                 }
                 for (ICommand command : LOBBY_COMMANDS) {
                     command.register(dispatcher);
                 }
-            } else if (serverRole.equals(ServerRole.MATCH)) {
+            } else if (serverRole == ServerRole.MATCH) {
                 for (ICommand command : GENERAL_COMMANDS) {
                     command.register(dispatcher);
                 }
